@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DariaTech Softphone</string>
+    <string name="not_connected">Nicht verbunden</string>
+    <string name="connecting">Verbinde …</string>
+    <string name="connected">Verbunden</string>
+    <string name="reg_failed">Anmeldung fehlgeschlagen: %1$s</string>
+    <string name="incoming_call">Eingehender Anruf</string>
+    <string name="answer">Annehmen</string>
+    <string name="decline">Ablehnen</string>
+    <string name="call">Anrufen</string>
+    <string name="hangup">Auflegen</string>
+    <string name="mute">Stumm</string>
+    <string name="unmute">Laut</string>
+    <string name="speaker">Lautsprecher</string>
+    <string name="earpiece">Hörer</string>
+    <string name="number_hint">Rufnummer</string>
+    <string name="account_section">SIP-Konto</string>
+    <string name="username_hint">Benutzername / Nebenstelle</string>
+    <string name="password_hint">Passwort</string>
+    <string name="domain_hint">Domain (z. B. sip.easybell.de)</string>
+    <string name="transport_hint">Transport</string>
+    <string name="save_connect">Speichern &amp; verbinden</string>
+</resources>

@@ -1,0 +1,49 @@
+name: Mobile Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/android/**"
+      - ".github/workflows/mobile-android.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Android-APK bauen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Debug-APK bauen
+        working-directory: mobile/android
+        run: gradle assembleDebug --no-daemon
+
+      - name: APK umbenennen
+        run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk "DariaTech-Softphone-Android-debug.apk"
+
+      - name: Als Release veröffentlichen
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="mobile-build-${{ github.run_number }}"
+          gh release create "$TAG" \
+            --title "DariaTech Softphone Android – Mobile-Build ${{ github.run_number }}" \
+            --notes "Automatischer Android-Debug-Build von Commit ${{ github.sha }}. Zum Installieren auf dem Gerät \"Unbekannte Quellen\" erlauben." \
+            --prerelease || true
+          gh release upload "$TAG" "DariaTech-Softphone-Android-debug.apk" --clobber
