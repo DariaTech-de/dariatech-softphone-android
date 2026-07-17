@@ -24,10 +24,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Gradle einrichten
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.7"
+      - name: Gradle 8.7 installieren
+        run: |
+          curl -sSL https://services.gradle.org/distributions/gradle-8.7-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d "$HOME/gradle"
+          echo "$HOME/gradle/gradle-8.7/bin" >> "$GITHUB_PATH"
 
       - name: Debug-APK bauen
         working-directory: mobile/android
