@@ -18,11 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Java 17 einrichten
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
+      - name: Java 17 aktivieren (vorinstalliert)
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
 
       - name: Gradle 8.7 installieren
         run: |
