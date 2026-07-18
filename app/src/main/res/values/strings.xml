@@ -6,6 +6,9 @@
     <string name="connected">Verbunden</string>
     <string name="reg_failed">Anmeldung fehlgeschlagen: %1$s</string>
     <string name="incoming_call">Eingehender Anruf</string>
+    <string name="outgoing_call">Rufe an …</string>
+    <string name="in_call">Im Gespräch</string>
+    <string name="on_hold">Wird gehalten</string>
     <string name="answer">Annehmen</string>
     <string name="decline">Ablehnen</string>
     <string name="call">Anrufen</string>
@@ -14,11 +17,23 @@
     <string name="unmute">Laut</string>
     <string name="speaker">Lautsprecher</string>
     <string name="earpiece">Hörer</string>
+    <string name="hold">Halten</string>
+    <string name="resume">Fortsetzen</string>
+    <string name="dtmf">Tasten</string>
     <string name="number_hint">Rufnummer</string>
     <string name="account_section">SIP-Konto</string>
     <string name="username_hint">Benutzername / Nebenstelle</string>
     <string name="password_hint">Passwort</string>
-    <string name="domain_hint">Domain (z. B. sip.easybell.de)</string>
+    <string name="domain_hint">Domain / Server</string>
     <string name="transport_hint">Transport</string>
+    <string name="preset_hint_label">Anbieter-Vorlage</string>
     <string name="save_connect">Speichern &amp; verbinden</string>
+    <string name="tab_dialpad">Telefon</string>
+    <string name="tab_history">Verlauf</string>
+    <string name="tab_settings">Konto</string>
+    <string name="history_empty">Noch keine Anrufe.</string>
+    <string name="missed_today">%1$d verpasste Anrufe heute</string>
+    <string name="dir_in">Eingehend</string>
+    <string name="dir_out">Ausgehend</string>
+    <string name="dir_missed">Verpasst</string>
 </resources>

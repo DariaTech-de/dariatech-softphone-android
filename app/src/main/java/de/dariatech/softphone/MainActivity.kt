@@ -3,18 +3,34 @@ package de.dariatech.softphone
 import android.Manifest
 import android.content.Context
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.GridLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import de.dariatech.softphone.databinding.ActivityMainBinding
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import org.linphone.core.Call
 import org.linphone.core.RegistrationState
 import org.linphone.core.TransportType
 
+/**
+ * Hauptbildschirm: Wähltastatur, Anrufliste und SIP-Konto (mit Anbieter-
+ * Vorlagen wie in der Desktop-App) plus Vollbild-Anrufansicht mit
+ * Stumm/Lautsprecher/Halten/DTMF.
+ */
 class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     private lateinit var binding: ActivityMainBinding
+    private val handler = Handler(Looper.getMainLooper())
+    private var durationTimer: Runnable? = null
+    private var dtmfVisible = false
 
     private val micPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -26,17 +42,143 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
         micPermission.launch(Manifest.permission.RECORD_AUDIO)
 
+        setupKeypad()
+        setupNavigation()
+        setupSettings()
+        setupCallControls()
+
+        LinphoneManager.listener = this
+        showCallUi(inCall = false, ringing = false)
+        showTab(Tab.DIALPAD)
+
+        // Gespeicherte Zugangsdaten laden und automatisch anmelden
+        val prefs = prefs()
+        if (!prefs.getString("username", "").isNullOrEmpty()) {
+            connect()
+        } else {
+            showTab(Tab.SETTINGS) // Erststart: direkt zum Konto
+        }
+    }
+
+    private fun prefs() = getSharedPreferences("sip", Context.MODE_PRIVATE)
+
+    // ---------- Tabs ----------
+
+    private enum class Tab { DIALPAD, HISTORY, SETTINGS }
+
+    private fun setupNavigation() {
+        binding.navDialpad.setOnClickListener { showTab(Tab.DIALPAD) }
+        binding.navHistory.setOnClickListener { showTab(Tab.HISTORY) }
+        binding.navSettings.setOnClickListener { showTab(Tab.SETTINGS) }
+    }
+
+    private fun showTab(tab: Tab) {
+        binding.viewDialpad.visibility = if (tab == Tab.DIALPAD) View.VISIBLE else View.GONE
+        binding.viewHistory.visibility = if (tab == Tab.HISTORY) View.VISIBLE else View.GONE
+        binding.viewSettings.visibility = if (tab == Tab.SETTINGS) View.VISIBLE else View.GONE
+        if (tab == Tab.HISTORY) refreshHistory()
+    }
+
+    // ---------- Wähltastatur ----------
+
+    private fun setupKeypad() {
+        binding.number.showSoftInputOnFocus = false
+        buildKeypad(binding.keypadGrid, large = true, textColor = R.color.brand) { digit ->
+            binding.number.append(digit.toString())
+        }
+        binding.backspaceButton.setOnClickListener {
+            val t = binding.number.text
+            if (t.isNotEmpty()) binding.number.setText(t.substring(0, t.length - 1))
+            binding.number.setSelection(binding.number.text.length)
+        }
+        binding.backspaceButton.setOnLongClickListener {
+            binding.number.setText("")
+            true
+        }
+        binding.callButton.setOnClickListener {
+            val number = binding.number.text.toString().trim()
+            if (number.isNotEmpty()) LinphoneManager.call(number)
+        }
+    }
+
+    /** Baut ein 3×4-Tastenfeld (1-9, *, 0, #) in das GridLayout. */
+    private fun buildKeypad(grid: GridLayout, large: Boolean, textColor: Int, onKey: (Char) -> Unit) {
+        grid.removeAllViews()
+        val keys = "123456789*0#"
+        val size = resources.displayMetrics.density * (if (large) 78 else 58)
+        for (key in keys) {
+            val b = Button(this)
+            b.text = key.toString()
+            b.textSize = if (large) 24f else 18f
+            b.gravity = Gravity.CENTER
+            b.setBackgroundResource(android.R.color.transparent)
+            b.setTextColor(resources.getColor(textColor, theme))
+            val lp = GridLayout.LayoutParams()
+            lp.width = size.toInt()
+            lp.height = size.toInt()
+            b.layoutParams = lp
+            b.setOnClickListener { onKey(key) }
+            grid.addView(b)
+        }
+    }
+
+    // ---------- Anrufliste ----------
+
+    private fun refreshHistory() {
+        val entries = CallLogStore.list(this)
+        val missed = CallLogStore.missedToday(this)
+        binding.missedInfo.text = getString(R.string.missed_today, missed)
+        binding.missedInfo.visibility = if (missed > 0) View.VISIBLE else View.GONE
+        binding.historyEmpty.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
+
+        val fmt = SimpleDateFormat("dd.MM. HH:mm", Locale.GERMANY)
+        val rows = entries.map { e ->
+            val dir = when (e.direction) {
+                "missed" -> "✗ ${getString(R.string.dir_missed)}"
+                "in" -> "↓ ${getString(R.string.dir_in)}"
+                else -> "↑ ${getString(R.string.dir_out)}"
+            }
+            val duration = if (e.durationSec > 0) " · ${e.durationSec / 60}:%02d".format(e.durationSec % 60) else ""
+            mapOf("line1" to e.number, "line2" to "$dir · ${fmt.format(Date(e.at))}$duration")
+        }
+        binding.historyList.adapter = android.widget.SimpleAdapter(
+            this,
+            rows,
+            android.R.layout.simple_list_item_2,
+            arrayOf("line1", "line2"),
+            intArrayOf(android.R.id.text1, android.R.id.text2)
+        )
+        binding.historyList.setOnItemClickListener { _, _, position, _ ->
+            // Antippen = Nummer in die Wähltastatur übernehmen (Rückruf)
+            binding.number.setText(entries[position].number)
+            binding.number.setSelection(binding.number.text.length)
+            showTab(Tab.DIALPAD)
+        }
+    }
+
+    // ---------- Einstellungen (SIP-Konto) ----------
+
+    private fun setupSettings() {
         binding.transport.setAdapter(
             ArrayAdapter(this, android.R.layout.simple_list_item_1, listOf("UDP", "TCP", "TLS"))
         )
+        binding.preset.setAdapter(
+            ArrayAdapter(this, android.R.layout.simple_list_item_1, PROVIDER_PRESETS.map { it.label })
+        )
+        binding.preset.setOnItemClickListener { _, _, position, _ ->
+            val preset = PROVIDER_PRESETS[position]
+            if (preset.domain.isNotEmpty()) binding.domain.setText(preset.domain)
+            binding.transport.setText(preset.transport, false)
+            binding.presetHint.text = preset.hint
+            binding.presetHint.visibility = View.VISIBLE
+        }
 
-        // Gespeicherte Zugangsdaten laden und automatisch anmelden
-        val prefs = getSharedPreferences("sip", Context.MODE_PRIVATE)
+        val prefs = prefs()
         binding.username.setText(prefs.getString("username", ""))
         binding.password.setText(prefs.getString("password", ""))
-        binding.domain.setText(prefs.getString("domain", "sip.easybell.de"))
+        binding.domain.setText(prefs.getString("domain", "pbx.dariatech.de"))
         binding.transport.setText(prefs.getString("transport", "UDP"), false)
-        if (!prefs.getString("username", "").isNullOrEmpty()) connect()
+        binding.preset.setText(prefs.getString("preset", ""), false)
 
         binding.connectButton.setOnClickListener {
             prefs.edit()
@@ -44,48 +186,77 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 .putString("password", binding.password.text.toString())
                 .putString("domain", binding.domain.text.toString().trim())
                 .putString("transport", binding.transport.text.toString())
+                .putString("preset", binding.preset.text.toString())
                 .apply()
             connect()
+            showTab(Tab.DIALPAD)
         }
+    }
 
-        binding.callButton.setOnClickListener {
-            val number = binding.number.text.toString().trim()
-            if (number.isNotEmpty()) LinphoneManager.call(number)
+    private fun connect() {
+        val transport = when (prefs().getString("transport", "UDP")) {
+            "TCP" -> TransportType.Tcp
+            "TLS" -> TransportType.Tls
+            else -> TransportType.Udp
+        }
+        LinphoneManager.login(
+            prefs().getString("username", "") ?: "",
+            prefs().getString("password", "") ?: "",
+            prefs().getString("domain", "") ?: "",
+            transport
+        )
+        binding.status.text = getString(R.string.connecting)
+    }
+
+    // ---------- Anruf-Vollbild ----------
+
+    private fun setupCallControls() {
+        buildKeypad(binding.dtmfPad, large = false, textColor = R.color.white) { digit ->
+            LinphoneManager.sendDtmf(digit)
         }
         binding.hangupButton.setOnClickListener { LinphoneManager.hangup() }
         binding.answerButton.setOnClickListener { LinphoneManager.answer() }
         binding.declineButton.setOnClickListener { LinphoneManager.hangup() }
         binding.muteButton.setOnClickListener {
             val muted = LinphoneManager.toggleMute()
-            binding.muteButton.text = getString(
-                if (muted) R.string.unmute else R.string.mute
-            )
+            binding.muteButton.text = getString(if (muted) R.string.unmute else R.string.mute)
         }
         binding.speakerButton.setOnClickListener {
             val speaker = LinphoneManager.toggleSpeaker()
-            binding.speakerButton.text = getString(
-                if (speaker) R.string.earpiece else R.string.speaker
-            )
+            binding.speakerButton.text =
+                getString(if (speaker) R.string.earpiece else R.string.speaker)
         }
-
-        LinphoneManager.listener = this
-        showCallUi(inCall = false, ringing = false)
+        binding.holdButton.setOnClickListener {
+            val held = LinphoneManager.toggleHold()
+            binding.holdButton.text = getString(if (held) R.string.resume else R.string.hold)
+            binding.callState.text = getString(if (held) R.string.on_hold else R.string.in_call)
+        }
+        binding.dtmfButton.setOnClickListener {
+            dtmfVisible = !dtmfVisible
+            binding.dtmfPad.visibility = if (dtmfVisible) View.VISIBLE else View.GONE
+        }
     }
 
-    private fun connect() {
-        val transport = when (binding.transport.text.toString()) {
-            "TCP" -> TransportType.Tcp
-            "TLS" -> TransportType.Tls
-            else -> TransportType.Udp
+    private fun startDurationTimer() {
+        stopDurationTimer()
+        val tick = object : Runnable {
+            override fun run() {
+                val s = LinphoneManager.currentCallDuration()
+                binding.callDuration.text = "%d:%02d".format(s / 60, s % 60)
+                handler.postDelayed(this, 1000)
+            }
         }
-        LinphoneManager.login(
-            binding.username.text.toString().trim(),
-            binding.password.text.toString(),
-            binding.domain.text.toString().trim(),
-            transport
-        )
-        binding.status.text = getString(R.string.connecting)
+        durationTimer = tick
+        handler.post(tick)
     }
+
+    private fun stopDurationTimer() {
+        durationTimer?.let { handler.removeCallbacks(it) }
+        durationTimer = null
+        binding.callDuration.text = ""
+    }
+
+    // ---------- Ereignisse aus dem SIP-Stack ----------
 
     override fun onRegistration(state: RegistrationState?, message: String) {
         runOnUiThread {
@@ -106,20 +277,28 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     override fun onCallState(call: Call, state: Call.State?, message: String) {
         runOnUiThread {
+            val who = call.remoteAddress.displayName ?: call.remoteAddress.username
+                ?: call.remoteAddress.asStringUriOnly()
             when (state) {
                 Call.State.IncomingReceived, Call.State.IncomingEarlyMedia -> {
-                    binding.callerInfo.text = call.remoteAddress.username ?: call.remoteAddress.asString()
+                    binding.callerInfo.text = who
+                    binding.callState.text = getString(R.string.incoming_call)
                     showCallUi(inCall = false, ringing = true)
                 }
                 Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> {
-                    binding.callerInfo.text = call.remoteAddress.username ?: ""
+                    binding.callerInfo.text = who
+                    binding.callState.text = getString(R.string.outgoing_call)
                     showCallUi(inCall = true, ringing = false)
                 }
                 Call.State.Connected, Call.State.StreamsRunning -> {
+                    binding.callState.text = getString(R.string.in_call)
                     showCallUi(inCall = true, ringing = false)
+                    startDurationTimer()
                 }
                 Call.State.End, Call.State.Released, Call.State.Error -> {
                     showCallUi(inCall = false, ringing = false)
+                    stopDurationTimer()
+                    refreshHistory()
                 }
                 else -> Unit
             }
@@ -127,8 +306,16 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     }
 
     private fun showCallUi(inCall: Boolean, ringing: Boolean) {
-        binding.incomingGroup.visibility = if (ringing) View.VISIBLE else View.GONE
-        binding.activeGroup.visibility = if (inCall) View.VISIBLE else View.GONE
-        binding.callButton.visibility = if (!inCall && !ringing) View.VISIBLE else View.GONE
+        binding.callOverlay.visibility = if (inCall || ringing) View.VISIBLE else View.GONE
+        binding.incomingControls.visibility = if (ringing) View.VISIBLE else View.GONE
+        binding.activeControls.visibility = if (inCall) View.VISIBLE else View.GONE
+        binding.hangupButton.visibility = if (inCall) View.VISIBLE else View.GONE
+        if (!inCall) {
+            dtmfVisible = false
+            binding.dtmfPad.visibility = View.GONE
+            binding.muteButton.text = getString(R.string.mute)
+            binding.speakerButton.text = getString(R.string.speaker)
+            binding.holdButton.text = getString(R.string.hold)
+        }
     }
 }

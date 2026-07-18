@@ -11,8 +11,9 @@ import org.linphone.core.RegistrationState
 import org.linphone.core.TransportType
 
 /**
- * Dünner Wrapper um den Liblinphone-Core: Registrierung, Anrufe,
- * Stummschaltung und Lautsprecher. Die UI hängt sich über [listener] an.
+ * Wrapper um den Liblinphone-Core: Registrierung, Anrufe, Stummschaltung,
+ * Lautsprecher, Halten, DTMF und die eigene Anrufliste. Die UI hängt sich
+ * über [listener] an.
  */
 object LinphoneManager {
 
@@ -25,9 +26,15 @@ object LinphoneManager {
         private set
 
     var listener: Listener? = null
-    private var domain: String = ""
+    private var appContext: Context? = null
+
+    // Verfolgung des aktuellen Anrufs für die Anrufliste
+    private var trackNumber = ""
+    private var trackIncoming = false
+    private var trackConnected = false
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         val factory = Factory.instance()
         core = factory.createCore(null, null, context)
         core.isPushNotificationEnabled = false
@@ -47,15 +54,48 @@ object LinphoneManager {
                 state: Call.State?,
                 message: String
             ) {
+                trackCall(call, state)
                 listener?.onCallState(call, state, message)
             }
         })
         core.start()
     }
 
+    private fun trackCall(call: Call, state: Call.State?) {
+        when (state) {
+            Call.State.IncomingReceived, Call.State.IncomingEarlyMedia -> {
+                trackNumber = call.remoteAddress.username ?: call.remoteAddress.asStringUriOnly()
+                trackIncoming = true
+                trackConnected = false
+            }
+            Call.State.OutgoingInit -> {
+                trackNumber = call.remoteAddress.username ?: call.remoteAddress.asStringUriOnly()
+                trackIncoming = false
+                trackConnected = false
+            }
+            Call.State.Connected, Call.State.StreamsRunning -> trackConnected = true
+            Call.State.End, Call.State.Error -> {
+                if (trackNumber.isNotEmpty()) {
+                    val direction = when {
+                        trackIncoming && !trackConnected -> "missed"
+                        trackIncoming -> "in"
+                        else -> "out"
+                    }
+                    appContext?.let {
+                        CallLogStore.add(
+                            it,
+                            CallEntry(trackNumber, direction, System.currentTimeMillis(), call.duration)
+                        )
+                    }
+                    trackNumber = ""
+                }
+            }
+            else -> Unit
+        }
+    }
+
     /** Meldet das Konto an; vorhandene Konten werden ersetzt. */
     fun login(username: String, password: String, domain: String, transport: TransportType) {
-        this.domain = domain
         core.clearAccounts()
         core.clearAllAuthInfo()
 
@@ -94,6 +134,26 @@ object LinphoneManager {
         core.isMicEnabled = !core.isMicEnabled
         return !core.isMicEnabled
     }
+
+    /** Anruf halten/fortsetzen; liefert true = wird gehalten. */
+    fun toggleHold(): Boolean {
+        val call = core.currentCall ?: core.calls.firstOrNull() ?: return false
+        return if (call.state == Call.State.Paused || call.state == Call.State.Pausing) {
+            call.resume()
+            false
+        } else {
+            call.pause()
+            true
+        }
+    }
+
+    /** DTMF-Ton im laufenden Gespräch senden (IVR-Menüs). */
+    fun sendDtmf(digit: Char) {
+        core.currentCall?.sendDtmf(digit)
+    }
+
+    /** Laufzeit des aktiven Anrufs in Sekunden. */
+    fun currentCallDuration(): Int = core.currentCall?.duration ?: 0
 
     /** Wechselt zwischen Hörmuschel und Lautsprecher; liefert true = Lautsprecher. */
     fun toggleSpeaker(): Boolean {
