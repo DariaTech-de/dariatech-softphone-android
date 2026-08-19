@@ -16,12 +16,13 @@ val PROVIDER_PRESETS = listOf(
     ProviderPreset(
         "dariatech-pbx", "DariaTech PBX", "pbx.dariatech.de", "UDP",
         "DariaTech-Telefonanlage. Benutzername und SIP-Passwort stehen im " +
-            "Admin-Portal unter „Nebenstellen“ (Knopf „Kopieren“). ACHTUNG bei der " +
-            "Serveradresse: Steht vor dem Portal ein Zugangsschutz wie Cloudflare " +
-            "Access, gilt dessen Adresse NUR für die Weboberfläche – SIP läuft dort " +
+            "Admin-Portal unter „Nebenstellen“ (Spalte „SIP-Benutzername“, nicht der " +
+            "Endpunkt mit „PJSIP/“). ACHTUNG bei der Serveradresse: Erreichen Sie das " +
+            "Portal über einen Cloudflare Tunnel, einen Zugangsschutz oder einen " +
+            "SSH-Tunnel, gilt dessen Adresse NUR für die Weboberfläche – SIP läuft dort " +
             "nicht durch. Maßgeblich ist die Adresse, die im Portal bei den " +
-            "Nebenstellen als SIP-Server angezeigt wird; im Zweifel die direkte " +
-            "Adresse oder IP des Anlagenservers."
+            "Nebenstellen als SIP-Server angezeigt wird; bei einem Zugang über WARP die " +
+            "private Adresse des Anlagenservers."
     ),
     // Zwei Vorlagen statt einer: easybell hat zwei verschiedene Produkte mit
     // verschiedenen Registraren. Vorher stand hier sip.easybell.de mit einem
