@@ -1,12 +1,9 @@
-name: Mobile Android
+name: Android
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - "mobile/android/**"
-      - ".github/workflows/mobile-android.yml"
+    branches: [main, "claude/**"]
 
 permissions:
   contents: write
@@ -28,11 +25,10 @@ jobs:
           echo "$HOME/gradle/gradle-8.7/bin" >> "$GITHUB_PATH"
 
       - name: Debug-APK bauen
-        working-directory: mobile/android
         run: gradle assembleDebug --no-daemon
 
       - name: APK umbenennen
-        run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk "DariaTech-Softphone-Android-debug.apk"
+        run: cp app/build/outputs/apk/debug/app-debug.apk "DariaTech-Softphone-Android-debug.apk"
 
       - name: Als Release veröffentlichen
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
