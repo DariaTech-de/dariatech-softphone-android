@@ -2,6 +2,7 @@ package de.dariatech.softphone
 
 import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +13,7 @@ import android.widget.Button
 import android.widget.GridLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import de.dariatech.softphone.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -35,12 +37,37 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     private val micPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    /**
+     * Die Kamera wird ERST GEFRAGT, wenn jemand Video einschaltet.
+     *
+     * Nicht beim Start zusammen mit dem Mikrofon: Wer eine Telefon-App
+     * öffnet und sofort nach der Kamera gefragt wird, lehnt ab – und
+     * dann geht Video auch später nicht mehr ohne Umweg über die
+     * Android-Einstellungen. Gefragt wird im Moment des Bedarfs, weil
+     * dann klar ist, wofür.
+     */
+    private var videoNachFreigabe = false
+    private val kameraFreigabe =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { erlaubt ->
+            if (erlaubt && videoNachFreigabe) {
+                videoNachFreigabe = false
+                videoEinschalten()
+            } else if (!erlaubt) {
+                videoNachFreigabe = false
+                binding.callState.text = getString(R.string.video_no_permission)
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         micPermission.launch(Manifest.permission.RECORD_AUDIO)
+
+        // Liblinphone zeichnet selbst auf diese beiden Flächen. Ohne sie
+        // bliebe das Bild aus, obwohl der Strom läuft.
+        LinphoneManager.videoFlaechen(binding.videoFremd, binding.videoEigen)
 
         setupKeypad()
         setupNavigation()
@@ -58,6 +85,14 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         } else {
             showTab(Tab.SETTINGS) // Erststart: direkt zum Konto
         }
+    }
+
+    override fun onDestroy() {
+        // Die Flächen gehören zu DIESER Activity. Bleibt der Verweis im
+        // Core stehen, zeichnet Liblinphone beim nächsten Anruf auf eine
+        // zerstörte View – und das ist ein Absturz, kein leeres Bild.
+        LinphoneManager.videoFlaechen(null, null)
+        super.onDestroy()
     }
 
     private fun prefs() = getSharedPreferences("sip", Context.MODE_PRIVATE)
@@ -235,6 +270,44 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             dtmfVisible = !dtmfVisible
             binding.dtmfPad.visibility = if (dtmfVisible) View.VISIBLE else View.GONE
         }
+        binding.videoButton.setOnClickListener {
+            if (LinphoneManager.videoLaeuft()) {
+                LinphoneManager.videoUmschalten()
+                zeigeVideo()
+                return@setOnClickListener
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                videoEinschalten()
+            } else {
+                videoNachFreigabe = true
+                kameraFreigabe.launch(Manifest.permission.CAMERA)
+            }
+        }
+        binding.kameraButton.setOnClickListener { LinphoneManager.kameraWechseln() }
+    }
+
+    private fun videoEinschalten() {
+        LinphoneManager.videoUmschalten()
+        zeigeVideo()
+    }
+
+    /**
+     * Die Videoflächen zeigen oder verstecken.
+     *
+     * Ein schwarzes Rechteck in einem Telefonat ohne Bild sieht aus wie
+     * ein Fehler – deshalb ist der ganze Bereich weg, solange kein Video
+     * läuft. Aufgerufen wird das bei jedem Zustandswechsel des Anrufs,
+     * nicht nur beim Drücken: Auch die GEGENSTELLE kann Bild dazu- oder
+     * abschalten.
+     */
+    private fun zeigeVideo() {
+        val an = LinphoneManager.videoLaeuft()
+        binding.videoBereich.visibility = if (an) View.VISIBLE else View.GONE
+        binding.kameraButton.visibility = if (an) View.VISIBLE else View.GONE
+        binding.videoButton.text =
+            getString(if (an) R.string.video_stop else R.string.video_start)
     }
 
     private fun startDurationTimer() {
@@ -291,10 +364,18 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                     showCallUi(inCall = true, ringing = false)
                 }
                 Call.State.Connected, Call.State.StreamsRunning -> {
-                    binding.callState.text = getString(R.string.in_call)
+                    binding.callState.text =
+                        if (LinphoneManager.gegenstelleMitVideo() && !LinphoneManager.videoLaeuft())
+                            getString(R.string.video_incoming)
+                        else getString(R.string.in_call)
                     showCallUi(inCall = true, ringing = false)
                     startDurationTimer()
+                    // Auch die GEGENSTELLE kann Bild dazu- oder abschalten:
+                    // Jeder Zustandswechsel richtet die Anzeige nach, statt
+                    // sie nur beim eigenen Drücken zu setzen.
+                    zeigeVideo()
                 }
+                Call.State.UpdatedByRemote -> zeigeVideo()
                 Call.State.End, Call.State.Released, Call.State.Error -> {
                     showCallUi(inCall = false, ringing = false)
                     stopDurationTimer()
@@ -309,6 +390,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.callOverlay.visibility = if (inCall || ringing) View.VISIBLE else View.GONE
         binding.incomingControls.visibility = if (ringing) View.VISIBLE else View.GONE
         binding.activeControls.visibility = if (inCall) View.VISIBLE else View.GONE
+        binding.videoControls.visibility = if (inCall) View.VISIBLE else View.GONE
         binding.hangupButton.visibility = if (inCall) View.VISIBLE else View.GONE
         if (!inCall) {
             dtmfVisible = false
@@ -316,6 +398,11 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             binding.muteButton.text = getString(R.string.mute)
             binding.speakerButton.text = getString(R.string.speaker)
             binding.holdButton.text = getString(R.string.hold)
+            // Das Bild endet mit dem Gespräch. Bliebe die Fläche stehen,
+            // sähe man nach dem Auflegen das letzte Standbild.
+            binding.videoBereich.visibility = View.GONE
+            binding.kameraButton.visibility = View.GONE
+            binding.videoButton.text = getString(R.string.video_start)
         }
     }
 }

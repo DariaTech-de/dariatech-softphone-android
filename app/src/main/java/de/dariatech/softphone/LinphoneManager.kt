@@ -1,6 +1,7 @@
 package de.dariatech.softphone
 
 import android.content.Context
+import android.view.TextureView
 import org.linphone.core.Account
 import org.linphone.core.AudioDevice
 import org.linphone.core.Call
@@ -38,6 +39,31 @@ object LinphoneManager {
         val factory = Factory.instance()
         core = factory.createCore(null, null, context)
         core.isPushNotificationEnabled = false
+
+        // VIDEO IST VORHANDEN, ABER NICHT AUTOMATISCH.
+        //
+        // Liblinphone kann Video vollständig – das ist der Grund, warum
+        // es hier überhaupt in Tagen und nicht in Monaten geht. Trotzdem
+        // steht es beim Start auf „vorhanden, aber nicht von selbst":
+        //
+        //  · isVideoCaptureEnabled/isVideoDisplayEnabled schalten die
+        //    FÄHIGKEIT ein. Ohne sie kann die App gar kein Bild, auch
+        //    wenn die Gegenstelle eins anbietet.
+        //  · isVideoActivationPolicy „automatically initiate/accept =
+        //    false" heißt: Kein Anruf startet von selbst mit Bild, und
+        //    keiner nimmt Bild von selbst an. Der Mensch drückt.
+        //
+        // Der Grund ist nicht Vorsicht um ihrer selbst willen: Ein
+        // Telefon, das bei jedem Anruf ungefragt die Kamera einschaltet,
+        // ist ein Datenschutzvorfall mit Ansage. Die Anlage gibt Video
+        // frei (Einstellungen → Video); DASS es läuft, entscheidet hier
+        // die Person am Gerät.
+        core.isVideoCaptureEnabled = true
+        core.isVideoDisplayEnabled = true
+        val politik = factory.createVideoActivationPolicy()
+        politik.automaticallyInitiate = false
+        politik.automaticallyAccept = false
+        core.videoActivationPolicy = politik
         core.addListener(object : CoreListenerStub() {
             override fun onAccountRegistrationStateChanged(
                 core: Core,
@@ -114,14 +140,75 @@ object LinphoneManager {
         core.defaultAccount = account
     }
 
-    fun call(number: String) {
+    /**
+     * Anrufen. `mitVideo` startet den Anruf mit Bild – sonst rein
+     * akustisch, wie bisher. Video lässt sich im Gespräch jederzeit
+     * dazuschalten (siehe [videoUmschalten]).
+     */
+    fun call(number: String, mitVideo: Boolean = false) {
         val address = core.interpretUrl(number, true) ?: return
-        val params = core.createCallParams(null)
-        core.inviteAddressWithParams(address, params ?: return)
+        val params = core.createCallParams(null) ?: return
+        params.isVideoEnabled = mitVideo
+        core.inviteAddressWithParams(address, params)
     }
 
+    /**
+     * Annehmen. Ein Videoanruf wird BEWUSST zunächst ohne Bild
+     * angenommen: Wer angerufen wird, soll nicht ungefragt gesendet
+     * werden. Das Bild kommt mit einem Druck auf „Video" dazu.
+     */
     fun answer() {
-        core.currentCall?.accept()
+        val call = core.currentCall ?: return
+        val params = core.createCallParams(call)
+        if (params != null) {
+            params.isVideoEnabled = false
+            call.acceptWithParams(params)
+        } else {
+            call.accept()
+        }
+    }
+
+    /** Bietet die Gegenstelle im laufenden Gespräch Bild an? */
+    fun gegenstelleMitVideo(): Boolean =
+        core.currentCall?.remoteParams?.isVideoEnabled == true
+
+    /** Läuft gerade Bild? */
+    fun videoLaeuft(): Boolean = core.currentCall?.currentParams?.isVideoEnabled == true
+
+    /**
+     * Bild im laufenden Gespräch dazuschalten oder abschalten.
+     * Liefert den neuen Zustand.
+     */
+    fun videoUmschalten(): Boolean {
+        val call = core.currentCall ?: return false
+        val an = !(call.currentParams.isVideoEnabled)
+        val params = core.createCallParams(call) ?: return false
+        params.isVideoEnabled = an
+        call.update(params)
+        return an
+    }
+
+    /** Zwischen Front- und Rückkamera wechseln. */
+    fun kameraWechseln() {
+        val liste = core.videoDevicesList
+        if (liste.size < 2) return
+        val jetzt = core.videoDevice
+        val naechste = liste.firstOrNull { it != jetzt && !it.contains("StaticImage", true) }
+        if (naechste != null) core.videoDevice = naechste
+    }
+
+    /**
+     * Die beiden Flächen verdrahten, auf denen Bild erscheint.
+     *
+     * Liblinphone zeichnet selbst auf diese Views; ohne sie bliebe das
+     * Bild aus, obwohl der Strom läuft. Sie werden beim Start der
+     * Oberfläche gesetzt und beim Beenden wieder gelöst – ein Verweis
+     * auf eine zerstörte Activity ist sonst ein Absturz beim nächsten
+     * Anruf.
+     */
+    fun videoFlaechen(fremd: TextureView?, eigen: TextureView?) {
+        core.nativeVideoWindowId = fremd
+        core.nativePreviewWindowId = eigen
     }
 
     fun hangup() {

@@ -20,6 +20,11 @@
     <string name="hold">Halten</string>
     <string name="resume">Fortsetzen</string>
     <string name="dtmf">Tasten</string>
+    <string name="video_start">Video an</string>
+    <string name="video_stop">Video aus</string>
+    <string name="camera_switch">Kamera wechseln</string>
+    <string name="video_incoming">Die Gegenstelle sendet Bild</string>
+    <string name="video_no_permission">Ohne Kamera-Freigabe geht kein Video. Sie lässt sich in den Android-Einstellungen nachträglich erteilen.</string>
     <string name="number_hint">Rufnummer</string>
     <string name="account_section">SIP-Konto</string>
     <string name="username_hint">Benutzername / Nebenstelle</string>

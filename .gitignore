@@ -1,0 +1,14 @@
+# Bauartefakte gehören nicht ins Repository.
+#
+# ANLASS (29.08.2026): Beim ersten Video-Commit hat ein `git add -A` die
+# gebaute APK mitgenommen – 153 MB, und GitHub lehnt alles über 100 MB
+# ab. Ohne diese Datei passiert das beim nächsten lokalen Bau wieder.
+build/
+app/build/
+.gradle/
+local.properties
+*.apk
+*.aab
+# Signierschlüssel kommen NIE ins Repository (CLAUDE.md, Regel 6).
+*.jks
+*.keystore
