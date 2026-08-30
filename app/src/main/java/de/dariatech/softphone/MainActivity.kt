@@ -76,7 +76,11 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
         LinphoneManager.listener = this
         showCallUi(inCall = false, ringing = false)
-        showTab(Tab.DIALPAD)
+        setzeKuerzel()
+        // Der Verlauf ist der Einstieg: Wer die App öffnet, will
+        // meistens zurückrufen. Das Wählfeld ist einen Tipp entfernt.
+        binding.leiste.selectedItemId = R.id.leiste_anrufe
+        showTab(Tab.HISTORY)
 
         // Gespeicherte Zugangsdaten laden und automatisch anmelden
         val prefs = prefs()
@@ -101,10 +105,32 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     private enum class Tab { DIALPAD, HISTORY, SETTINGS }
 
+    /**
+     * Die Leiste am unteren Rand statt dreier Textknöpfe.
+     *
+     * DER AUFTRAG des Inhabers vom 30.08.2026: die Apps optisch auf
+     * höchstes Niveau zu bringen. Drei Wörter nebeneinander waren
+     * bedienbar und sahen selbstgebaut aus.
+     *
+     * EINSTELLUNGEN STEHEN NICHT IN DER LEISTE. Man öffnet sie einmal
+     * beim Einrichten und danach selten; sie hängen am Profilbild oben,
+     * wie überall. Dafür ist unten Platz für das, was täglich gebraucht
+     * wird.
+     */
     private fun setupNavigation() {
-        binding.navDialpad.setOnClickListener { showTab(Tab.DIALPAD) }
-        binding.navHistory.setOnClickListener { showTab(Tab.HISTORY) }
-        binding.navSettings.setOnClickListener { showTab(Tab.SETTINGS) }
+        binding.leiste.setOnItemSelectedListener { punkt ->
+            when (punkt.itemId) {
+                R.id.leiste_anrufe -> showTab(Tab.HISTORY)
+                R.id.leiste_tastenfeld -> showTab(Tab.DIALPAD)
+                // Kontakte und Nachrichten holt die App noch nicht von
+                // der Anlage. Bis dahin führen beide auf den Verlauf,
+                // statt einen leeren Bildschirm zu zeigen, den niemand
+                // erklärt hat.
+                else -> showTab(Tab.HISTORY)
+            }
+            true
+        }
+        binding.profilKnopf.setOnClickListener { showTab(Tab.SETTINGS) }
     }
 
     private fun showTab(tab: Tab) {
@@ -112,6 +138,24 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.viewHistory.visibility = if (tab == Tab.HISTORY) View.VISIBLE else View.GONE
         binding.viewSettings.visibility = if (tab == Tab.SETTINGS) View.VISIBLE else View.GONE
         if (tab == Tab.HISTORY) refreshHistory()
+    }
+
+    /**
+     * Das Namenskürzel im Profilknopf.
+     *
+     * Aus dem SIP-Benutzernamen: „ahmadsaber.temori" wird „AT". Ein
+     * leeres Feld bekommt einen Punkt statt zwei Leerzeichen – ein
+     * Kreis, in dem nichts steht, sieht nach einem Ladefehler aus.
+     */
+    private fun setzeKuerzel() {
+        val name = prefs().getString("username", "") ?: ""
+        val teile = name.split(".", "_", "-", " ").filter { it.isNotBlank() }
+        val kuerzel = when {
+            teile.size >= 2 -> "${teile[0].first()}${teile[1].first()}"
+            teile.size == 1 -> teile[0].take(2)
+            else -> "·"
+        }
+        binding.profilKuerzel.text = kuerzel.uppercase()
     }
 
     // ---------- Wähltastatur ----------
@@ -253,6 +297,8 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 .apply()
             Zugangsspeicher.setzePasswort(this, binding.password.text.toString())
             connect()
+            setzeKuerzel()
+            binding.leiste.selectedItemId = R.id.leiste_tastenfeld
             showTab(Tab.DIALPAD)
         }
     }

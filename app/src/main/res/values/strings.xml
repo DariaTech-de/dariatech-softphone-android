@@ -59,4 +59,23 @@
     <string name="tasten_stern" translatable="false"></string>
     <string name="tasten_0">+</string>
     <string name="tasten_raute" translatable="false"></string>
+
+    <!-- Die Leiste am unteren Rand. Eigene Wortwahl, keine übernommene
+         Sammlung – siehe docs/GESTALTUNG-MOBIL.md im Repository
+         dariatech-pbx. -->
+    <string name="leiste_anrufe">Anrufe</string>
+    <string name="leiste_tastenfeld">Wählen</string>
+    <string name="leiste_kontakte">Kontakte</string>
+    <string name="leiste_voicemail">Nachrichten</string>
+
+    <!-- Leere Zustände sagen, was zu tun ist – nicht „keine Einträge". -->
+    <string name="leer_anrufe_titel">Noch keine Anrufe</string>
+    <string name="leer_anrufe_text">Sobald Sie telefonieren, steht hier, wer wann angerufen hat – zum Zurückrufen mit einem Tippen.</string>
+    <string name="leer_kontakte_titel">Adressbuch der Anlage</string>
+    <string name="leer_kontakte_text">Hier erscheinen die Kontakte Ihrer Organisation, sobald sie im Portal gepflegt sind.</string>
+    <string name="leer_nachrichten_titel">Keine Sprachnachrichten</string>
+    <string name="leer_nachrichten_text">Wenn jemand auf Ihre Voicemail spricht, finden Sie die Nachricht hier.</string>
+
+    <string name="meine_nummer">Meine Nummer: %1$s</string>
+    <string name="profil_oeffnen">Profil und Einstellungen</string>
 </resources>

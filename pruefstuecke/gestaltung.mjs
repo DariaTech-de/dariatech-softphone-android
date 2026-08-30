@@ -115,7 +115,38 @@ console.log("\n4) Die Marke bleibt die Marke");
   pruefe("und der Notruf-Rot-Ton ist eindeutig", "gefahr" in hell, JSON.stringify(Object.keys(hell)));
 }
 
-console.log("\n5) Ein dunkles Thema ist auch hinterlegt");
+console.log("\n5) Die Abgrenzung: unsere Handschrift, nicht die von Cisco");
+{
+  // DER ANLASS ist eine Auflage des Inhabers vom 30.08.2026, wörtlich:
+  // „Es darf nicht gleich sein, sodass uns Cisco verklagen kann, weil
+  // wir deren App-Optik kopiert haben."
+  //
+  // Konventionen sind frei – ein Wählfeld mit ABC unter der 2 gibt es
+  // seit den 1960er Jahren. Eine ERKENNUNGSFARBE ist es nicht. Ciscos
+  // ist ein Blau; unsere ist das Grün aus dem Portal der Anlage, und
+  // das ist der sichtbarste einzelne Unterschied.
+  //
+  // Geprüft wird deshalb der Farbton selbst: Ist der Blau-Anteil
+  // dominant, ist es kein Grün mehr. Wer eines Tages ein Blau als
+  // Auszeichnung einbaut, bekommt einen roten Lauf – und den Hinweis
+  // auf docs/GESTALTUNG-MOBIL.md im Repository dariatech-pbx.
+  const gruen = (hex) => {
+    const roh = hex.replace("#", "");
+    const t = roh.length === 8 ? roh.slice(2) : roh;
+    const r = parseInt(t.slice(0, 2), 16);
+    const g = parseInt(t.slice(2, 4), 16);
+    const b = parseInt(t.slice(4, 6), 16);
+    return g > r && g > b;
+  };
+  for (const [modus, satz] of [["hell", hell], ["dunkel", dunkel]]) {
+    pruefe(`${modus}: die Auszeichnungsfarbe ist ein Grün, kein Blau`,
+      gruen(satz.primaer), `${satz.primaer} – siehe docs/GESTALTUNG-MOBIL.md`);
+    pruefe(`${modus}: die Marke ist ein Grün`,
+      gruen(satz.marke), satz.marke);
+  }
+}
+
+console.log("\n6) Ein dunkles Thema ist auch hinterlegt");
 {
   const nacht = existsSync("app/src/main/res/values-night/themes.xml");
   pruefe("values-night/themes.xml liegt vor", nacht,

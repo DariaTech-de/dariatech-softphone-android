@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DIE LEISTE AM UNTEREN RAND.
+
+  Vier Punkte, weil vier die Grenze ist, ab der man nicht mehr blind
+  trifft. „Einstellungen" steht bewusst NICHT hier: Man öffnet sie
+  einmal beim Einrichten und danach selten – sie hängt am Profilbild
+  oben, wie überall.
+
+  Die Reihenfolge folgt der Häufigkeit: Wer die App öffnet, will meistens
+  zurückrufen (Anrufe), dann wählen, dann jemanden suchen.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/leiste_anrufe"
+        android:icon="@drawable/ic_anrufe"
+        android:title="@string/leiste_anrufe" />
+    <item
+        android:id="@+id/leiste_tastenfeld"
+        android:icon="@drawable/ic_tastenfeld"
+        android:title="@string/leiste_tastenfeld" />
+    <item
+        android:id="@+id/leiste_kontakte"
+        android:icon="@drawable/ic_kontakte"
+        android:title="@string/leiste_kontakte" />
+    <item
+        android:id="@+id/leiste_voicemail"
+        android:icon="@drawable/ic_voicemail"
+        android:title="@string/leiste_voicemail" />
+</menu>
