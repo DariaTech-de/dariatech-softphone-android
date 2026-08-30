@@ -204,6 +204,62 @@
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
+                    <!-- TELEFONDIENST. Hier sucht jemand nach, wenn nichts
+                         geht – nicht in der Leiste oben. Der Zustand steht
+                         als PUNKT UND ALS WORT da: Farbe allein trägt keine
+                         Aussage, wer Rot und Grün nicht unterscheidet, liest
+                         den Text. -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/telefondienst_section"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:id="@+id/dienstPunkt"
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:layout_marginEnd="8dp"
+                            android:background="@drawable/dot_red" />
+
+                        <TextView
+                            android:id="@+id/dienstText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="15sp" />
+                    </LinearLayout>
+
+                    <!-- Der Grund. Steht nur da, wenn es einen gibt – eine
+                         leere Zeile, die manchmal etwas enthält, lässt die
+                         Ansicht springen. -->
+                    <TextView
+                        android:id="@+id/dienstGrund"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/dienstNebenstelle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp" />
+
                     <!-- Die Serveradresse steht hier zum ANSEHEN, nicht zum
                          Eintragen. Sie kommt aus Anlage.kt; diese App gehört
                          der DariaTech-Anlage. Ganz weglassen wäre schlechter:
@@ -213,9 +269,30 @@
                         android:id="@+id/anlageZeile"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="2dp"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="13sp" />
+
+                    <!-- Neu anmelden, OHNE das Passwort noch einmal zu
+                         tippen. Nach einem Netzwechsel (WLAN zu Mobilfunk)
+                         steht die Registrierung manchmal still, bis etwas
+                         sie anstößt. -->
+                    <Button
+                        android:id="@+id/neuAnmelden"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/neu_anmelden"
+                        style="?attr/materialButtonOutlinedStyle" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:text="@string/zugangsdaten_section"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
                     <EditText
                         android:id="@+id/username"

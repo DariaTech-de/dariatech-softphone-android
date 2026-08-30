@@ -32,6 +32,11 @@
     <!-- %1$s ist die Adresse aus Anlage.kt. Sie steht zum Ansehen da,
          nicht zum Eintragen: Diese App gehört der DariaTech-Anlage. -->
     <string name="anlage_zeile">Telefonanlage: %1$s</string>
+    <string name="telefondienst_section">Telefondienst</string>
+    <string name="zugangsdaten_section">Zugangsdaten</string>
+    <string name="neu_anmelden">Neu anmelden</string>
+    <string name="nebenstelle_zeile">Nebenstelle: %1$s</string>
+    <string name="nebenstelle_leer">Nebenstelle: noch nicht eingetragen</string>
     <string name="save_connect">Speichern &amp; verbinden</string>
     <string name="tab_dialpad">Telefon</string>
     <string name="tab_history">Verlauf</string>

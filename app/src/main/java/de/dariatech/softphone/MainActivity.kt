@@ -357,6 +357,14 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
         binding.anlageZeile.text = getString(R.string.anlage_zeile, Anlage.anzeige)
         binding.username.setText(prefs.getString("username", ""))
+        zeigeDienst()
+        binding.neuAnmelden.setOnClickListener {
+            // Kein erneutes Eintippen des Passworts: Nach einem
+            // Netzwechsel (WLAN auf Mobilfunk) steht die Registrierung
+            // manchmal still, bis sie jemand anstößt.
+            LinphoneManager.neuAnmelden()
+            zeigeDienst(Dienstzustand.LAEUFT)
+        }
         // Das Passwort kommt aus dem VERSCHLÜSSELTEN Speicher – siehe
         // Zugangsspeicher. Beim ersten Lesen zieht ein Altbestand aus der
         // Klartext-Ablage automatisch mit um.
@@ -493,6 +501,52 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 }
                 else -> binding.status.text = message
             }
+            // Die Einstellungen führen denselben Zustand mit. Ohne diese
+            // Zeile stünde dort für immer, was beim Öffnen galt – und
+            // genau dort sieht jemand nach, wenn nichts geht.
+            zeigeDienst(Telefondienst.zustandAus(state), message)
+        }
+    }
+
+    // ---------- Telefondienst in den Einstellungen ----------
+
+    /**
+     * Zustand, Grund und Nebenstelle in den Einstellungen nachziehen.
+     *
+     * Ohne Argumente wird der Zustand aus dem abgeleitet, was dasteht:
+     * Wer noch keine Zugangsdaten eingetragen hat, hat KEINE Störung –
+     * ihm ein rotes „Nicht verbunden" hinzustellen, schickt ihn auf
+     * Fehlersuche statt in das Feld darunter.
+     */
+    private fun zeigeDienst(
+        zustand: Dienstzustand? = null,
+        meldung: String = ""
+    ) {
+        val nebenstelle = prefs().getString("username", "").orEmpty()
+        val echt = zustand ?: when {
+            nebenstelle.isBlank() || Zugangsspeicher.passwort(this).isEmpty() ->
+                Dienstzustand.UNVOLLSTAENDIG
+            LinphoneManager.istRegistriert() -> Dienstzustand.VERBUNDEN
+            else -> Dienstzustand.GETRENNT
+        }
+
+        binding.dienstText.text = Telefondienst.bezeichnung(echt)
+        binding.dienstPunkt.setBackgroundResource(
+            when (echt) {
+                Dienstzustand.VERBUNDEN -> R.drawable.dot_green
+                Dienstzustand.GETRENNT -> R.drawable.dot_red
+                else -> R.drawable.dot_grau
+            }
+        )
+
+        val grund = if (echt == Dienstzustand.GETRENNT) Telefondienst.grund(meldung) else ""
+        binding.dienstGrund.text = grund
+        binding.dienstGrund.visibility = if (grund.isBlank()) View.GONE else View.VISIBLE
+
+        binding.dienstNebenstelle.text = if (nebenstelle.isBlank()) {
+            getString(R.string.nebenstelle_leer)
+        } else {
+            getString(R.string.nebenstelle_zeile, "$nebenstelle@${Anlage.SERVER}")
         }
     }
 

@@ -141,6 +141,24 @@ object LinphoneManager {
     }
 
     /**
+     * Die Registrierung neu anstoßen, ohne Zugangsdaten anzufassen.
+     *
+     * NACH EINEM NETZWECHSEL steht sie manchmal still: Wer aus dem WLAN
+     * in den Mobilfunk läuft, behält eine Registrierung, die ins Leere
+     * zeigt, bis der Ablauftimer greift – und das kann Minuten dauern.
+     * In dieser Zeit klingelt das Telefon nicht. Ein Knopf, der das
+     * anstößt, ist keine Bequemlichkeit, sondern der kürzeste Weg aus
+     * einem stillen Telefon.
+     */
+    fun neuAnmelden() {
+        core.refreshRegisters()
+    }
+
+    /** Ob gerade ein Konto angemeldet ist – für die Einstellungen. */
+    fun istRegistriert(): Boolean =
+        core.defaultAccount?.state == org.linphone.core.RegistrationState.Ok
+
+    /**
      * Anrufen. `mitVideo` startet den Anruf mit Bild – sonst rein
      * akustisch, wie bisher. Video lässt sich im Gespräch jederzeit
      * dazuschalten (siehe [videoUmschalten]).

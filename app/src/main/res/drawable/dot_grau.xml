@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grau, nicht Rot: für „wird angemeldet" und „noch nicht eingerichtet".
+     Beides ist KEINE Störung. Ein roter Punkt in diesen beiden Fällen
+     schickt jemanden auf Fehlersuche, wo nichts zu suchen ist. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/umriss" />
+</shape>
