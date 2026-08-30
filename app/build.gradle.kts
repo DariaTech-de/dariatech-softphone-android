@@ -43,5 +43,7 @@ dependencies {
     // Siehe Zugangsspeicher.kt – ein SIP-Passwort im Klartext ist eine
     // Telefonrechnung, die jemand anderes schreibt.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Der Anrufverlauf als Liste – siehe VerlaufAdapter.
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 }

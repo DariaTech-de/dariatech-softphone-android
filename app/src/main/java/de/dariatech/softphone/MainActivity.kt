@@ -2,6 +2,8 @@ package de.dariatech.softphone
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -34,6 +36,9 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     private var durationTimer: Runnable? = null
     private var dtmfVisible = false
 
+    private val meldeRecht =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     private val micPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -64,6 +69,16 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         setContentView(binding.root)
 
         micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        Anrufmeldung.kanaeleAnlegen(this)
+        // SEIT ANDROID 13 MUSS MAN AUCH DAS FRAGEN. Das Recht stand
+        // schon im Manifest, gefragt wurde nie – und ohne die Frage
+        // zeigt Android schlicht keine Meldung an. Ein eingehender Anruf
+        // blieb damit auf dem Sperrbildschirm unsichtbar, ohne dass
+        // irgendwo ein Fehler stand.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            meldeRecht.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        behandleAbsicht(intent)
 
         // Liblinphone zeichnet selbst auf diese beiden Flächen. Ohne sie
         // bliebe das Bild aus, obwohl der Strom läuft.
@@ -88,6 +103,34 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             connect()
         } else {
             showTab(Tab.SETTINGS) // Erststart: direkt zum Konto
+        }
+    }
+
+    /**
+     * Was die Anrufmeldung an die App zurückschickt.
+     *
+     * Als Absicht (Intent) und nicht als Rundruf: So kommt die App in
+     * jedem Fall in den Vordergrund – auch aus dem gesperrten Zustand –,
+     * und der Benutzer sieht, was er gerade angenommen hat.
+     */
+    companion object {
+        const val AKTION_ANNEHMEN = "de.dariatech.softphone.ANNEHMEN"
+        const val AKTION_ABLEHNEN = "de.dariatech.softphone.ABLEHNEN"
+        const val AKTION_AUFLEGEN = "de.dariatech.softphone.AUFLEGEN"
+        const val AKTION_OEFFNEN = "de.dariatech.softphone.OEFFNEN"
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        behandleAbsicht(intent)
+    }
+
+    private fun behandleAbsicht(intent: Intent?) {
+        when (intent?.action) {
+            AKTION_ANNEHMEN -> LinphoneManager.answer()
+            AKTION_ABLEHNEN, AKTION_AUFLEGEN -> LinphoneManager.hangup()
+            else -> Unit
         }
     }
 
@@ -229,6 +272,26 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     // ---------- Anrufliste ----------
 
+    private var verlauf: VerlaufAdapter? = null
+
+    /**
+     * Das Namenskürzel für einen Verlaufseintrag.
+     *
+     * Es gibt in dieser App noch kein Adressbuch – also kommt es aus der
+     * NUMMER. Die letzten beiden Ziffern sind das, woran man eine
+     * Nebenstelle wiedererkennt („…12"); bei einer langen Rufnummer
+     * bleibt ein Rautezeichen, weil zwei beliebige Ziffern daraus nichts
+     * bedeuten.
+     */
+    private fun kuerzelFuer(e: CallEntry): String {
+        val nur = e.number.filter { it.isDigit() }
+        return when {
+            nur.isEmpty() -> "?"
+            nur.length <= 4 -> nur.takeLast(2)
+            else -> "#"
+        }
+    }
+
     private fun refreshHistory() {
         val entries = CallLogStore.list(this)
         val missed = CallLogStore.missedToday(this)
@@ -236,28 +299,29 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.missedInfo.visibility = if (missed > 0) View.VISIBLE else View.GONE
         binding.historyEmpty.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
 
-        val fmt = SimpleDateFormat("dd.MM. HH:mm", Locale.GERMANY)
-        val rows = entries.map { e ->
-            val dir = when (e.direction) {
-                "missed" -> "✗ ${getString(R.string.dir_missed)}"
-                "in" -> "↓ ${getString(R.string.dir_in)}"
-                else -> "↑ ${getString(R.string.dir_out)}"
-            }
-            val duration = if (e.durationSec > 0) " · ${e.durationSec / 60}:%02d".format(e.durationSec % 60) else ""
-            mapOf("line1" to e.number, "line2" to "$dir · ${fmt.format(Date(e.at))}$duration")
-        }
-        binding.historyList.adapter = android.widget.SimpleAdapter(
-            this,
-            rows,
-            android.R.layout.simple_list_item_2,
-            arrayOf("line1", "line2"),
-            intArrayOf(android.R.id.text1, android.R.id.text2)
-        )
-        binding.historyList.setOnItemClickListener { _, _, position, _ ->
-            // Antippen = Nummer in die Wähltastatur übernehmen (Rückruf)
-            binding.number.setText(entries[position].number)
-            binding.number.setSelection(binding.number.text.length)
-            showTab(Tab.DIALPAD)
+        if (verlauf == null) {
+            binding.historyList.layoutManager =
+                androidx.recyclerview.widget.LinearLayoutManager(this)
+            verlauf = VerlaufAdapter(
+                entries,
+                amKuerzel = { kuerzelFuer(it) },
+                // ZURÜCKRUFEN IST EIN TIPPEN. Vorher übernahm ein Tippen
+                // die Nummer ins Wählfeld, und man musste ein zweites Mal
+                // drücken – in einer App, die man im Gehen bedient, ein
+                // Schritt zu viel.
+                beimAnrufen = { LinphoneManager.call(it.number) },
+                // Die Zeile selbst führt weiterhin ins Wählfeld: Wer die
+                // Nummer erst ansehen oder ergänzen will, kann das.
+                beimTippen = {
+                    binding.number.setText(it.number)
+                    binding.number.setSelection(binding.number.text.length)
+                    binding.leiste.selectedItemId = R.id.leiste_tastenfeld
+                    showTab(Tab.DIALPAD)
+                }
+            )
+            binding.historyList.adapter = verlauf
+        } else {
+            verlauf?.zeige(entries)
         }
     }
 
@@ -432,6 +496,10 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                     binding.callerInfo.text = who
                     binding.callState.text = getString(R.string.incoming_call)
                     showCallUi(inCall = false, ringing = true)
+                    // Auch wenn die App zu ist und das Telefon in der
+                    // Tasche liegt: Ohne diese Meldung klingelt es zwar,
+                    // aber auf dem Sperrbildschirm steht nichts.
+                    Anrufmeldung.eingehend(this, who)
                 }
                 Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> {
                     binding.callerInfo.text = who
@@ -445,6 +513,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                         else getString(R.string.in_call)
                     showCallUi(inCall = true, ringing = false)
                     startDurationTimer()
+                    Anrufmeldung.laufend(this, who)
                     // Auch die GEGENSTELLE kann Bild dazu- oder abschalten:
                     // Jeder Zustandswechsel richtet die Anzeige nach, statt
                     // sie nur beim eigenen Drücken zu setzen.
@@ -452,6 +521,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 }
                 Call.State.UpdatedByRemote -> zeigeVideo()
                 Call.State.End, Call.State.Released, Call.State.Error -> {
+                    Anrufmeldung.weg(this)
                     showCallUi(inCall = false, ringing = false)
                     stopDurationTimer()
                     refreshHistory()

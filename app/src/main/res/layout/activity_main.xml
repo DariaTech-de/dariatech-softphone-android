@@ -165,12 +165,12 @@
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
-                <ListView
+                <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/historyList"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:divider="?attr/colorOutlineVariant"
-                    android:dividerHeight="1dp" />
+                    android:clipToPadding="false"
+                    android:paddingBottom="12dp" />
 
                 <TextView
                     android:id="@+id/historyEmpty"

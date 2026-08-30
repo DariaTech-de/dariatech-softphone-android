@@ -78,4 +78,13 @@
 
     <string name="meine_nummer">Meine Nummer: %1$s</string>
     <string name="profil_oeffnen">Profil und Einstellungen</string>
+
+    <!-- Anrufmeldungen -->
+    <string name="kanal_anruf">Eingehende Anrufe</string>
+    <string name="kanal_anruf_text">Meldet einen Anruf, auch wenn das Telefon gesperrt ist.</string>
+    <string name="kanal_laufend">Laufendes Gespräch</string>
+    <string name="kanal_laufend_text">Zeigt an, dass ein Gespräch läuft. Klingelt nicht.</string>
+    <string name="eingehender_anruf">Eingehender Anruf</string>
+    <string name="laufendes_gespraech">Gespräch läuft</string>
+    <string name="unbekannter_anrufer">Unbekannt</string>
 </resources>

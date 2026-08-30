@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  EINE ZEILE IM VERLAUF.
+
+  Vorher war das ein `android.R.layout.simple_list_item_2` – zwei Zeilen
+  Text aus dem Android-Vorrat, mit einem Pfeil als Zeichen vorne im Text
+  („↓ Eingehend · 26.08. 11:45"). Bedienbar, und auf den ersten Blick
+  nicht von einer Übung zu unterscheiden.
+
+  Jetzt: Namenskreis links, Nummer und Richtung darunter, Zeit rechts,
+  Anrufknopf ganz rechts. Der Anrufknopf ist der Punkt – zurückrufen ist
+  das, wofür man einen Verlauf öffnet, und es soll ein Tippen sein und
+  kein Umweg über das Wählfeld.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp">
+
+    <TextView
+        android:id="@+id/zeileKuerzel"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:background="@drawable/kreis_flaeche"
+        android:gravity="center"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/zeileNummer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/zeileRichtung"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/zeileZeit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:gravity="end"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="13sp" />
+
+    <ImageView
+        android:id="@+id/zeileAnrufen"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/leiste_anrufe"
+        android:padding="10dp"
+        android:src="@drawable/ic_anrufe"
+        app:tint="?attr/colorPrimary"
+        xmlns:app="http://schemas.android.com/apk/res-auto" />
+</LinearLayout>
