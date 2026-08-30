@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DIESELBEN ROLLEN, für ein dunkles Telefon.
+
+  Dass es diese Datei gibt, ist der eigentliche Punkt: Ohne sie
+  bekommt jeder mit dunkler Systemeinstellung eine weiße Fläche ins
+  Gesicht – nachts, im Bett, im Auto. Das fällt beim Bauen nicht auf,
+  sondern beim ersten Nutzer.
+
+  KEIN REINES SCHWARZ als Untergrund. Auf OLED sieht das zunächst
+  edel aus, aber Kanten flimmern beim Scrollen, und ein Kontrast von
+  21:1 ermüdet. Ein sehr dunkles Grün trägt die Marke und ist ruhiger.
+-->
+<resources>
+    <color name="marke">#0D3D2E</color>
+
+    <color name="hintergrund">#0A1511</color>
+    <color name="flaeche">#132420</color>
+    <color name="flaeche_erhoben">#1B302A</color>
+
+    <color name="text">#E8F1ED</color>
+    <color name="text_leise">#9FB6AD</color>
+    <color name="auf_marke">#FFFFFF</color>
+
+    <!-- Auf Dunkel muss das Grün HELLER werden, nicht dunkler: Ein
+         Knopf in Portalgrün wäre auf diesem Untergrund kaum zu sehen.
+         Die Schrift darauf wird entsprechend dunkel. -->
+    <color name="primaer">#3DDC97</color>
+    <color name="auf_primaer">#04231A</color>
+    <color name="primaer_leise">#16362B</color>
+
+    <color name="gefahr">#FF6B6B</color>
+    <color name="auf_gefahr">#2A0707</color>
+
+    <color name="gut">#3DDC97</color>
+    <color name="warnung">#F0B357</color>
+
+    <color name="umriss">#5E7A71</color>
+    <color name="umriss_leise">#244038</color>
+
+    <color name="gespraech_grund">#08140F</color>
+    <color name="gespraech_text">#EAF3EF</color>
+    <color name="gespraech_leise">#9DB3AA</color>
+
+    <color name="brand">#0D3D2E</color>
+    <color name="emerald">#3DDC97</color>
+    <color name="mint_bg">#16362B</color>
+    <color name="red">#FF6B6B</color>
+    <color name="white">#FFFFFF</color>
+</resources>

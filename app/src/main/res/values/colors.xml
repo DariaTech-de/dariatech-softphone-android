@@ -1,8 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  DIE FARBEN DER APP – helle Fassung.
+
+  DER ANLASS ist ein Auftrag des Inhabers vom 30.08.2026: die Apps
+  optisch auf höchstes Niveau zu bringen. Vorher waren es fünf Farben
+  ohne Rollen; jede Ansicht suchte sich selbst etwas aus.
+
+  DIE ROLLEN sind hier benannt, nicht die Farbtöne: „flaeche" und nicht
+  „hellgrau". Wer eine Ansicht baut, fragt sich dann, WOFÜR er eine
+  Farbe braucht, und nicht, welche gerade hübsch ist. Und der
+  Dunkelmodus in values-night muss nur dieselben Rollen anders
+  belegen – nicht jede Ansicht anfassen.
+
+  ALLE KONTRASTE SIND AUSGERECHNET und im Prüfstück
+  `pruefstuecke/gestaltung.mjs` festgenagelt (WCAG AA). Wer hier einen
+  Ton ändert, sieht sofort, ob er die Lesbarkeit mitnimmt.
+-->
 <resources>
+    <!-- Die Marke: das tiefe Grün aus dem Portal der Anlage. -->
+    <color name="marke">#0D3D2E</color>
+
+    <!-- Untergrund und Flächen -->
+    <color name="hintergrund">#F6F9F8</color>
+    <color name="flaeche">#FFFFFF</color>
+    <color name="flaeche_erhoben">#EDF3F1</color>
+
+    <!-- Schrift -->
+    <color name="text">#0C1A15</color>
+    <color name="text_leise">#51655D</color>
+    <color name="auf_marke">#FFFFFF</color>
+
+    <!-- Handlung: der grüne Knopf. Dunkler als das Portal-Grün,
+         damit weiße Schrift darauf AA erreicht. -->
+    <color name="primaer">#04724D</color>
+    <color name="auf_primaer">#FFFFFF</color>
+    <color name="primaer_leise">#E3F1EB</color>
+
+    <!-- Auflegen, Notruf, Fehler -->
+    <color name="gefahr">#C11B1B</color>
+    <color name="auf_gefahr">#FFFFFF</color>
+
+    <!-- Zustände -->
+    <color name="gut">#04724D</color>
+    <color name="warnung">#8A5200</color>
+
+    <!-- Linien und Rahmen -->
+    <color name="umriss">#6E857C</color>
+    <color name="umriss_leise">#D7E2DE</color>
+
+    <!-- Der Gesprächsbildschirm ist immer dunkel, in beiden Modi:
+         Ein Telefonat am Ohr soll nicht blenden, und ein Wechsel der
+         Helligkeit mitten im Gespräch irritiert. -->
+    <color name="gespraech_grund">#08140F</color>
+    <color name="gespraech_text">#EAF3EF</color>
+    <color name="gespraech_leise">#9DB3AA</color>
+
+    <!-- Historisch, bis alle Layouts umgestellt sind. -->
     <color name="brand">#0D3D2E</color>
-    <color name="emerald">#059669</color>
-    <color name="mint_bg">#EAF4EF</color>
-    <color name="red">#DC2626</color>
+    <color name="emerald">#04724D</color>
+    <color name="mint_bg">#E3F1EB</color>
+    <color name="red">#C11B1B</color>
     <color name="white">#FFFFFF</color>
 </resources>

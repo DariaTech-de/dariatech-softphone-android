@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Das helle Thema. Es benennt die Material-3-Rollen EINMAL; jede
-  Ansicht greift danach auf „?attr/colorPrimary" zu und nicht auf eine
-  Farbe. Genau deshalb genügt für den Dunkelmodus eine zweite
-  colors.xml – kein Layout muss angefasst werden.
+  Das dunkle Thema. Es belegt DIESELBEN Rollen wie das helle – die
+  Farbwerte kommen aus values-night/colors.xml.
+
+  Ohne diese Datei gälten nachts die hellen Farbrollen von Material,
+  und die App sähe halb umgestellt aus: dunkle Flächen, helle Knöpfe.
 -->
 <resources>
-    <style name="Theme.DariaTech" parent="Theme.Material3.Light.NoActionBar">
+    <style name="Theme.DariaTech" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/primaer</item>
         <item name="colorOnPrimary">@color/auf_primaer</item>
         <item name="colorPrimaryContainer">@color/primaer_leise</item>
@@ -22,6 +23,5 @@
         <item name="android:colorBackground">@color/hintergrund</item>
         <item name="android:statusBarColor">@color/hintergrund</item>
         <item name="android:navigationBarColor">@color/flaeche</item>
-        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>
