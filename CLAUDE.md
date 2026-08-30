@@ -106,8 +106,18 @@ was jetzt.
 ### 4. Der Bau bleibt grün
 
 ```bash
-gradle assembleDebug --no-daemon      # Java 17, Android SDK 34
+node pruefstuecke/*.mjs                # Quelltext-Verträge (ohne Gerät)
+gradle assembleDebug --no-daemon       # Java 17, Android SDK 34
 ```
+
+Die Prüfstücke in `pruefstuecke/` sind eigenständige Node-Skripte, wie in
+der Anlage. Sie prüfen, was sich OHNE Gerät prüfen lässt – etwa dass das
+SIP-Passwort nirgends in einen unverschlüsselten Speicher geschrieben
+wird (`passwort.mjs`). Ein Gerätetest wäre dafür der bessere Weg, aber
+`EncryptedSharedPreferences` braucht den Android-Keystore, also einen
+Emulator; der steht in der Prüfumgebung nicht zur Verfügung. Ein
+Quelltext-Vertrag, der den Fehler fängt, ist mehr wert als ein
+Gerätetest, den niemand laufen lässt.
 
 Derselbe Befehl läuft in `.github/workflows/mobile-android.yml` und legt
 die APK als Vorabversion `mobile-build-N` ab.

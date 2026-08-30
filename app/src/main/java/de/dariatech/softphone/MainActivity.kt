@@ -210,7 +210,10 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
         val prefs = prefs()
         binding.username.setText(prefs.getString("username", ""))
-        binding.password.setText(prefs.getString("password", ""))
+        // Das Passwort kommt aus dem VERSCHLÜSSELTEN Speicher – siehe
+        // Zugangsspeicher. Beim ersten Lesen zieht ein Altbestand aus der
+        // Klartext-Ablage automatisch mit um.
+        binding.password.setText(Zugangsspeicher.passwort(this))
         binding.domain.setText(prefs.getString("domain", "pbx.dariatech.de"))
         binding.transport.setText(prefs.getString("transport", "UDP"), false)
         binding.preset.setText(prefs.getString("preset", ""), false)
@@ -218,11 +221,11 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.connectButton.setOnClickListener {
             prefs.edit()
                 .putString("username", binding.username.text.toString().trim())
-                .putString("password", binding.password.text.toString())
                 .putString("domain", binding.domain.text.toString().trim())
                 .putString("transport", binding.transport.text.toString())
                 .putString("preset", binding.preset.text.toString())
                 .apply()
+            Zugangsspeicher.setzePasswort(this, binding.password.text.toString())
             connect()
             showTab(Tab.DIALPAD)
         }
@@ -236,7 +239,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         }
         LinphoneManager.login(
             prefs().getString("username", "") ?: "",
-            prefs().getString("password", "") ?: "",
+            Zugangsspeicher.passwort(this),
             prefs().getString("domain", "") ?: "",
             transport
         )

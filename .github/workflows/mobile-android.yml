@@ -24,6 +24,15 @@ jobs:
           unzip -q /tmp/gradle.zip -d "$HOME/gradle"
           echo "$HOME/gradle/gradle-8.7/bin" >> "$GITHUB_PATH"
 
+      # Prüfstücke VOR dem Bau: Ein Vertragsbruch soll auffallen, bevor
+      # zehn Minuten Bauzeit verbrannt sind.
+      - name: Prüfstücke
+        run: |
+          for p in pruefstuecke/*.mjs; do
+            echo "--- $p"
+            node "$p"
+          done
+
       - name: Debug-APK bauen
         run: gradle assembleDebug --no-daemon
 
