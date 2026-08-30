@@ -118,7 +118,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     private fun setupKeypad() {
         binding.number.showSoftInputOnFocus = false
-        buildKeypad(binding.keypadGrid, large = true, textColor = R.color.brand) { digit ->
+        buildKeypad(binding.keypadGrid, large = true, textColor = 0) { digit ->
             binding.number.append(digit.toString())
         }
         binding.backspaceButton.setOnClickListener {
@@ -136,24 +136,50 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         }
     }
 
-    /** Baut ein 3×4-Tastenfeld (1-9, *, 0, #) in das GridLayout. */
+    /** Die Buchstaben unter den Ziffern – in der Reihenfolge der Tasten. */
+    private val tastenBuchstaben = mapOf(
+        '1' to R.string.tasten_1, '2' to R.string.tasten_2, '3' to R.string.tasten_3,
+        '4' to R.string.tasten_4, '5' to R.string.tasten_5, '6' to R.string.tasten_6,
+        '7' to R.string.tasten_7, '8' to R.string.tasten_8, '9' to R.string.tasten_9,
+        '*' to R.string.tasten_stern, '0' to R.string.tasten_0, '#' to R.string.tasten_raute
+    )
+
+    /**
+     * Baut ein 3×4-Tastenfeld (1-9, *, 0, #) in das GridLayout.
+     *
+     * JEDE TASTE KOMMT AUS taste.xml und wird nicht mehr im Code
+     * zusammengesetzt. Vorher war es ein nackter `Button` mit einer
+     * Ziffer – funktionsfähig und erkennbar selbstgebaut. Jetzt trägt
+     * sie ihre Buchstaben, wie jedes Telefon der Welt, und ihre
+     * Gestaltung steht an einer Stelle.
+     *
+     * Die kleine Fassung (DTMF im Gespräch) zeigt KEINE Buchstaben: Wer
+     * mitten im Gespräch eine Ziffer für ein Sprachmenü tippt, sucht
+     * nicht nach Buchstaben, und die Fläche ist knapp.
+     */
     private fun buildKeypad(grid: GridLayout, large: Boolean, textColor: Int, onKey: (Char) -> Unit) {
         grid.removeAllViews()
-        val keys = "123456789*0#"
-        val size = resources.displayMetrics.density * (if (large) 78 else 58)
-        for (key in keys) {
-            val b = Button(this)
-            b.text = key.toString()
-            b.textSize = if (large) 24f else 18f
-            b.gravity = Gravity.CENTER
-            b.setBackgroundResource(android.R.color.transparent)
-            b.setTextColor(resources.getColor(textColor, theme))
+        val kante = (resources.displayMetrics.density * (if (large) 72 else 56)).toInt()
+        for (key in "123456789*0#") {
+            val taste = layoutInflater.inflate(R.layout.taste, grid, false)
+            val ziffer = taste.findViewById<android.widget.TextView>(R.id.tasteZiffer)
+            val buchstaben = taste.findViewById<android.widget.TextView>(R.id.tasteBuchstaben)
+            ziffer.text = key.toString()
+            ziffer.textSize = if (large) 28f else 20f
+            val text = tastenBuchstaben[key]?.let { getString(it) } ?: ""
+            buchstaben.text = text
+            // Leere Buchstabenzeile GONE und nicht INVISIBLE: Sonst
+            // sitzt die Ziffer bei 1, * und # höher als bei den anderen,
+            // und ein Wählfeld, dessen Ziffern nicht auf einer Linie
+            // stehen, sieht unfertig aus.
+            buchstaben.visibility = if (large && text.isNotEmpty()) View.VISIBLE else View.GONE
+            if (textColor != 0) ziffer.setTextColor(resources.getColor(textColor, theme))
             val lp = GridLayout.LayoutParams()
-            lp.width = size.toInt()
-            lp.height = size.toInt()
-            b.layoutParams = lp
-            b.setOnClickListener { onKey(key) }
-            grid.addView(b)
+            lp.width = kante
+            lp.height = kante
+            taste.layoutParams = lp
+            taste.setOnClickListener { onKey(key) }
+            grid.addView(taste)
         }
     }
 
@@ -249,7 +275,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     // ---------- Anruf-Vollbild ----------
 
     private fun setupCallControls() {
-        buildKeypad(binding.dtmfPad, large = false, textColor = R.color.white) { digit ->
+        buildKeypad(binding.dtmfPad, large = false, textColor = R.color.gespraech_text) { digit ->
             LinphoneManager.sendDtmf(digit)
         }
         binding.hangupButton.setOnClickListener { LinphoneManager.hangup() }

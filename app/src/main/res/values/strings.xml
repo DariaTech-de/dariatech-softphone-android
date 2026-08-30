@@ -41,4 +41,22 @@
     <string name="dir_in">Eingehend</string>
     <string name="dir_out">Ausgehend</string>
     <string name="dir_missed">Verpasst</string>
+
+    <!-- DIE BUCHSTABEN UNTER DEN ZIFFERN.
+         Jede Telefon-App der Welt zeigt ABC unter der 2. Wer eine
+         Nummer vom Zettel abliest oder eine Buchstabenwahl kennt
+         (0800-DARIATECH), sucht danach – und wer sie nicht findet, hält
+         die App für unfertig. -->
+    <string name="tasten_1" translatable="false"></string>
+    <string name="tasten_2">ABC</string>
+    <string name="tasten_3">DEF</string>
+    <string name="tasten_4">GHI</string>
+    <string name="tasten_5">JKL</string>
+    <string name="tasten_6">MNO</string>
+    <string name="tasten_7">PQRS</string>
+    <string name="tasten_8">TUV</string>
+    <string name="tasten_9">WXYZ</string>
+    <string name="tasten_stern" translatable="false"></string>
+    <string name="tasten_0">+</string>
+    <string name="tasten_raute" translatable="false"></string>
 </resources>

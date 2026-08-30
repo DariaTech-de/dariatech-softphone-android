@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  EINE WÄHLTASTE: Ziffer groß, Buchstaben klein darunter.
+
+  DER ANLASS ist ein Auftrag des Inhabers vom 30.08.2026, die Apps
+  optisch auf höchstes Niveau zu bringen. Die Tasten waren bis dahin im
+  Code erzeugte `Button`-Objekte mit nur einer Ziffer – funktionsfähig
+  und erkennbar selbstgebaut.
+
+  ALS EIGENE DATEI und nicht im Code: Eine Taste ist ein
+  Gestaltungsgegenstand. Wer ihre Größe, ihren Abstand oder ihre
+  Berührungsfläche ändern will, soll das an einer Stelle tun können und
+  nicht in einer Schleife in MainActivity.
+
+  Die Fläche ist 72dp im Quadrat – deutlich über den 48dp, die Android
+  als Mindestmaß für eine Berührung nennt. Ein Wählfeld wird im Gehen
+  bedient, mit einer Hand, oft ohne hinzusehen.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="72dp"
+    android:layout_height="72dp"
+    android:background="?attr/selectableItemBackgroundBorderless"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tasteZiffer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="28sp"
+        tools:text="2"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <TextView
+        android:id="@+id/tasteBuchstaben"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:letterSpacing="0.12"
+        android:includeFontPadding="false"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+</LinearLayout>
