@@ -29,12 +29,13 @@ import androidx.security.crypto.MasterKey
  * WAS HIER LIEGT UND WAS NICHT:
  *
  *   verschlüsselt : ausschließlich das Passwort
- *   gewöhnlich    : Benutzername, Domain, Transport, Anbietervorlage
+ *   gewöhnlich    : Benutzername (Server und Transport stehen fest,
+ *                   siehe Anlage.kt)
  *
  * Das ist Absicht. Der verschlüsselte Speicher braucht den
  * Android-Keystore; schlägt er fehl (ein Gerät mit kaputtem Keystore
  * ist selten, aber es gibt ihn), soll die App trotzdem starten und der
- * Benutzer seinen Namen und seine Domain noch sehen. Was dann fehlt,
+ * Benutzer seinen Namen noch sehen. Was dann fehlt,
  * ist das Passwort – und das ist die richtige Seite des Irrtums.
  */
 object Zugangsspeicher {

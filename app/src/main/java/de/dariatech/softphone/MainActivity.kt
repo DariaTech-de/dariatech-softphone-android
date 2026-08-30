@@ -10,7 +10,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.GridLayout
 import androidx.activity.result.contract.ActivityResultContracts
@@ -350,36 +349,22 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     // ---------- Einstellungen (SIP-Konto) ----------
 
     private fun setupSettings() {
-        binding.transport.setAdapter(
-            ArrayAdapter(this, android.R.layout.simple_list_item_1, listOf("UDP", "TCP", "TLS"))
-        )
-        binding.preset.setAdapter(
-            ArrayAdapter(this, android.R.layout.simple_list_item_1, PROVIDER_PRESETS.map { it.label })
-        )
-        binding.preset.setOnItemClickListener { _, _, position, _ ->
-            val preset = PROVIDER_PRESETS[position]
-            if (preset.domain.isNotEmpty()) binding.domain.setText(preset.domain)
-            binding.transport.setText(preset.transport, false)
-            binding.presetHint.text = preset.hint
-            binding.presetHint.visibility = View.VISIBLE
-        }
-
         val prefs = prefs()
+        // Ein Altbestand aus der Zeit, als die Serveradresse noch ein
+        // Eingabefeld war, wird hier aufgeräumt UND gemeldet – siehe
+        // Anlage.raeumeAltbestandAuf().
+        Anlage.raeumeAltbestandAuf(prefs)
+
+        binding.anlageZeile.text = getString(R.string.anlage_zeile, Anlage.anzeige)
         binding.username.setText(prefs.getString("username", ""))
         // Das Passwort kommt aus dem VERSCHLÜSSELTEN Speicher – siehe
         // Zugangsspeicher. Beim ersten Lesen zieht ein Altbestand aus der
         // Klartext-Ablage automatisch mit um.
         binding.password.setText(Zugangsspeicher.passwort(this))
-        binding.domain.setText(prefs.getString("domain", "pbx.dariatech.de"))
-        binding.transport.setText(prefs.getString("transport", "UDP"), false)
-        binding.preset.setText(prefs.getString("preset", ""), false)
 
         binding.connectButton.setOnClickListener {
             prefs.edit()
                 .putString("username", binding.username.text.toString().trim())
-                .putString("domain", binding.domain.text.toString().trim())
-                .putString("transport", binding.transport.text.toString())
-                .putString("preset", binding.preset.text.toString())
                 .apply()
             Zugangsspeicher.setzePasswort(this, binding.password.text.toString())
             connect()
@@ -390,7 +375,9 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     }
 
     private fun connect() {
-        val transport = when (prefs().getString("transport", "UDP")) {
+        // Server und Transport kommen aus Anlage.kt, nicht aus den
+        // Einstellungen. Diese App gehört EINER Anlage.
+        val transport = when (Anlage.TRANSPORT) {
             "TCP" -> TransportType.Tcp
             "TLS" -> TransportType.Tls
             else -> TransportType.Udp
@@ -398,7 +385,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         LinphoneManager.login(
             prefs().getString("username", "") ?: "",
             Zugangsspeicher.passwort(this),
-            prefs().getString("domain", "") ?: "",
+            Anlage.SERVER,
             transport
         )
         binding.status.text = getString(R.string.connecting)

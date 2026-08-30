@@ -29,9 +29,9 @@
     <string name="account_section">SIP-Konto</string>
     <string name="username_hint">Benutzername / Nebenstelle</string>
     <string name="password_hint">Passwort</string>
-    <string name="domain_hint">Domain / Server</string>
-    <string name="transport_hint">Transport</string>
-    <string name="preset_hint_label">Anbieter-Vorlage</string>
+    <!-- %1$s ist die Adresse aus Anlage.kt. Sie steht zum Ansehen da,
+         nicht zum Eintragen: Diese App gehört der DariaTech-Anlage. -->
+    <string name="anlage_zeile">Telefonanlage: %1$s</string>
     <string name="save_connect">Speichern &amp; verbinden</string>
     <string name="tab_dialpad">Telefon</string>
     <string name="tab_history">Verlauf</string>

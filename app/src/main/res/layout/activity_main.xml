@@ -204,37 +204,18 @@
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
+                    <!-- Die Serveradresse steht hier zum ANSEHEN, nicht zum
+                         Eintragen. Sie kommt aus Anlage.kt; diese App gehört
+                         der DariaTech-Anlage. Ganz weglassen wäre schlechter:
+                         Wer eine Störung sucht, will sehen, wohin die App
+                         eigentlich telefoniert. -->
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/anlageZeile"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
-                        android:text="@string/preset_hint_label"
-                        android:textSize="13sp" />
-
-                    <AutoCompleteTextView
-                        android:id="@+id/preset"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="none"
-                        android:hint="@string/preset_hint_label" />
-
-                    <TextView
-                        android:id="@+id/presetHint"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp"
-                        android:visibility="gone" />
-
-                    <EditText
-                        android:id="@+id/domain"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:hint="@string/domain_hint"
-                        android:importantForAutofill="no"
-                        android:inputType="textUri" />
+                        android:textSize="13sp" />
 
                     <EditText
                         android:id="@+id/username"
@@ -253,19 +234,6 @@
                         android:hint="@string/password_hint"
                         android:importantForAutofill="no"
                         android:inputType="textPassword" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/transport_hint"
-                        android:textSize="13sp" />
-
-                    <AutoCompleteTextView
-                        android:id="@+id/transport"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="none" />
 
                     <Button
                         android:id="@+id/connectButton"
