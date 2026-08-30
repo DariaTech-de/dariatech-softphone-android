@@ -276,6 +276,20 @@
                         android:text="@string/save_connect" />
                 </LinearLayout>
             </ScrollView>
+            <!-- Kontakte und Nachrichten. Beide holen ihre Daten noch
+                 nicht von der Anlage; bis dahin sagen sie das, statt auf
+                 einen anderen Bereich umzuleiten. Eine App, die auf
+                 „Kontakte" den Verlauf zeigt, ist kaputt – eine, die
+                 sagt „kommt aus dem Portal", ist ehrlich. -->
+            <include
+                android:id="@+id/viewKontakte"
+                layout="@layout/view_leer"
+                android:visibility="gone" />
+
+            <include
+                android:id="@+id/viewNachrichten"
+                layout="@layout/view_leer"
+                android:visibility="gone" />
         </FrameLayout>
 
         <!-- ==================== Leiste am unteren Rand ====================

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  EIN LEERER BEREICH, der sagt, was zu tun ist.
+
+  „Keine Einträge" ist keine Auskunft. Wer einen Bereich zum ersten Mal
+  öffnet, will wissen, WOMIT er sich füllt und ob er selbst etwas tun
+  muss. Deshalb: ein Zeichen, eine Überschrift, ein Satz.
+
+  Und kein Bild aus fremder Hand: Das Zeichen ist eines unserer eigenen
+  Symbole, groß und blass – siehe docs/GESTALTUNG-MOBIL.md im
+  Repository dariatech-pbx.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <ImageView
+        android:id="@+id/leerZeichen"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:alpha="0.28"
+        android:contentDescription="@null"
+        app:tint="?attr/colorOnSurfaceVariant" />
+
+    <TextView
+        android:id="@+id/leerTitel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/leerText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:lineSpacingExtra="3dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp" />
+</LinearLayout>

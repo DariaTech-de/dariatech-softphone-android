@@ -88,6 +88,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         setupNavigation()
         setupSettings()
         setupCallControls()
+        setupLeereBereiche()
 
         LinphoneManager.listener = this
         showCallUi(inCall = false, ringing = false)
@@ -146,7 +147,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     // ---------- Tabs ----------
 
-    private enum class Tab { DIALPAD, HISTORY, SETTINGS }
+    private enum class Tab { DIALPAD, HISTORY, KONTAKTE, NACHRICHTEN, SETTINGS }
 
     /**
      * Die Leiste am unteren Rand statt dreier Textknöpfe.
@@ -165,11 +166,8 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             when (punkt.itemId) {
                 R.id.leiste_anrufe -> showTab(Tab.HISTORY)
                 R.id.leiste_tastenfeld -> showTab(Tab.DIALPAD)
-                // Kontakte und Nachrichten holt die App noch nicht von
-                // der Anlage. Bis dahin führen beide auf den Verlauf,
-                // statt einen leeren Bildschirm zu zeigen, den niemand
-                // erklärt hat.
-                else -> showTab(Tab.HISTORY)
+                R.id.leiste_kontakte -> showTab(Tab.KONTAKTE)
+                else -> showTab(Tab.NACHRICHTEN)
             }
             true
         }
@@ -180,7 +178,31 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.viewDialpad.visibility = if (tab == Tab.DIALPAD) View.VISIBLE else View.GONE
         binding.viewHistory.visibility = if (tab == Tab.HISTORY) View.VISIBLE else View.GONE
         binding.viewSettings.visibility = if (tab == Tab.SETTINGS) View.VISIBLE else View.GONE
+        binding.viewKontakte.root.visibility = if (tab == Tab.KONTAKTE) View.VISIBLE else View.GONE
+        binding.viewNachrichten.root.visibility =
+            if (tab == Tab.NACHRICHTEN) View.VISIBLE else View.GONE
         if (tab == Tab.HISTORY) refreshHistory()
+    }
+
+    /**
+     * Die beiden Bereiche, die noch keine Daten haben.
+     *
+     * SIE SAGEN, WAS SIE SIND, statt auf einen anderen Bereich
+     * umzuleiten. Eine App, die auf „Kontakte" den Verlauf zeigt, ist
+     * kaputt; eine, die sagt „kommt aus dem Portal", ist ehrlich – und
+     * der Benutzer weiß, dass er nichts falsch gemacht hat.
+     *
+     * Die Texte stehen schon in strings.xml, die Anbindung an die Anlage
+     * kommt später. Das ist der Unterschied zwischen „fehlt noch" und
+     * „funktioniert nicht".
+     */
+    private fun setupLeereBereiche() {
+        binding.viewKontakte.leerZeichen.setImageResource(R.drawable.ic_kontakte)
+        binding.viewKontakte.leerTitel.setText(R.string.leer_kontakte_titel)
+        binding.viewKontakte.leerText.setText(R.string.leer_kontakte_text)
+        binding.viewNachrichten.leerZeichen.setImageResource(R.drawable.ic_voicemail)
+        binding.viewNachrichten.leerTitel.setText(R.string.leer_nachrichten_titel)
+        binding.viewNachrichten.leerText.setText(R.string.leer_nachrichten_text)
     }
 
     /**
