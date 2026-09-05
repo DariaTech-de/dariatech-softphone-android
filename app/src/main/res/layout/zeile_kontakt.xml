@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  EINE ZEILE IM ADRESSBUCH.
+
+  Derselbe Aufbau wie im Verlauf (zeile_anruf.xml): Kreis links, Name
+  und Zeile darunter, Anrufknopf rechts. Zwei Listen, die sich
+  verschieden anfühlen, sind zwei Apps.
+
+  DER KREIS TRÄGT ENTWEDER EIN BILD ODER ZWEI BUCHSTABEN. Beides liegt
+  übereinander; sichtbar ist immer genau eines. Ein leerer Kreis sähe
+  aus wie ein Bild, das nicht geladen hat.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp">
+
+    <FrameLayout
+        android:layout_width="42dp"
+        android:layout_height="42dp">
+
+        <TextView
+            android:id="@+id/kontaktKuerzel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/kreis_flaeche"
+            android:gravity="center"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/kontaktFoto"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/foto_des_anrufers"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/kontaktName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/kontaktUnten"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/kontaktAnrufen"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/leiste_anrufe"
+        android:padding="10dp"
+        android:src="@drawable/ic_anrufe"
+        app:tint="?attr/colorPrimary" />
+</LinearLayout>

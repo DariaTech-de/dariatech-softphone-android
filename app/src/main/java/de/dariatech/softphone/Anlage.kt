@@ -73,6 +73,20 @@ object Anlage {
      */
     const val TRANSPORT = "UDP"
 
+    /**
+     * Der Dienst der Anlage für alles, was NICHT Telefonie ist:
+     * Kollegen, Bilder, Kontakte, Faxe.
+     *
+     * EIGENER PORT, EIGENE VERSCHLÜSSELUNG. Er ist bewusst getrennt vom
+     * Portal – das lauscht nur auf 127.0.0.1. Vorgabe ist 8443, und TLS
+     * ist dort Pflicht: Ein Bearer-Token im Klartext über das
+     * öffentliche Netz ist ein verschenktes Geheimnis, einmal
+     * mitgelesen gilt es für immer (pbx/docs/CLIENT-API.md).
+     *
+     * DIESELBE ZEILE STEHT IN Anlage.swift der iOS-App.
+     */
+    const val DIENST = "https://$SERVER:8443"
+
     /** Was in den Einstellungen als Server dasteht – nur zum Ansehen. */
     val anzeige: String get() = "$SERVER ($TRANSPORT)"
 

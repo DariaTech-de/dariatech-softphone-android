@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DER BEREICH „KONTAKTE".
+
+  Die Liste und der leere Zustand liegen ÜBEREINANDER, nicht
+  nebeneinander: Sichtbar ist immer genau eines. Ein Bereich, in dem
+  beides untereinander steht, springt beim ersten Laden.
+
+  Der leere Zustand sagt, was fehlt, statt eine leere Fläche zu zeigen –
+  „nichts da" und „kaputt" sehen sonst gleich aus.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/kontakteListe"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="12dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/kontakteLeer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <ImageView
+            android:id="@+id/kontakteLeerZeichen"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:alpha="0.35"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_kontakte" />
+
+        <TextView
+            android:id="@+id/kontakteLeerTitel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/kontakteLeerText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+    </LinearLayout>
+</FrameLayout>

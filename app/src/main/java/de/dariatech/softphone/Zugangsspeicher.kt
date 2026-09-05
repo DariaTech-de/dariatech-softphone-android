@@ -121,4 +121,26 @@ object Zugangsspeicher {
         // Auch beim Setzen: Ein Altbestand darf nicht liegen bleiben.
         offen(context).edit().remove(ALTES_FELD).apply()
     }
+
+    /**
+     * Irgendein Geheimnis lesen – seit dem 05.09.2026 auch das Token
+     * des Dienstes.
+     *
+     * DERSELBE SPEICHER WIE FÜR DAS SIP-PASSWORT, und das ist keine
+     * Bequemlichkeit: Wer das Token hat, kommt an das Adressbuch des
+     * Kunden und an die Bilder seiner Leute. Ein zweiter, offener Ort
+     * dafür wäre die Lücke, die niemand sucht, weil das Passwort ja
+     * sicher liegt.
+     */
+    fun lies(context: Context, feld: String): String {
+        val s = sicher(context) ?: return ""
+        return s.getString(feld, "") ?: ""
+    }
+
+    /** Irgendein Geheimnis setzen. Leer löscht es. */
+    fun setze(context: Context, feld: String, wert: String) {
+        val s = sicher(context) ?: return
+        if (wert.isEmpty()) s.edit().remove(feld).apply()
+        else s.edit().putString(feld, wert).apply()
+    }
 }

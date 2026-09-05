@@ -328,7 +328,7 @@
                  sagt „kommt aus dem Portal", ist ehrlich. -->
             <include
                 android:id="@+id/viewKontakte"
-                layout="@layout/view_leer"
+                layout="@layout/view_kontakte"
                 android:visibility="gone" />
 
             <include
@@ -391,6 +391,21 @@
                 android:layout_gravity="top|end"
                 android:layout_margin="8dp" />
         </FrameLayout>
+
+        <!-- DAS GESICHT DES ANRUFERS. Beim Klingeln ist die Frage nicht
+             „welche Nummer", sondern „wer". Ohne Bild stehen die
+             Initialen darunter im Textfeld – ein leerer Kreis sähe aus
+             wie ein Ladefehler, deshalb wird er nur gezeigt, wenn es
+             wirklich ein Bild gibt. -->
+        <ImageView
+            android:id="@+id/callerFoto"
+            android:layout_width="132dp"
+            android:layout_height="132dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="18dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/foto_des_anrufers"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/callerInfo"

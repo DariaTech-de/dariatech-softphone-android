@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.GridLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.core.content.ContextCompat
 import de.dariatech.softphone.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
@@ -34,6 +35,12 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     private val handler = Handler(Looper.getMainLooper())
     private var durationTimer: Runnable? = null
     private var dtmfVisible = false
+    /**
+     * Die Kennung des Menschen am anderen Ende, wenn es ein Kollege ist –
+     * daran hängt sein Bild. Leer heißt: kein Gesicht, aber ein Name
+     * oder eine Nummer.
+     */
+    private var gegenueberId: String? = null
 
     private val meldeRecht =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -92,6 +99,13 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         LinphoneManager.listener = this
         showCallUi(inCall = false, ringing = false)
         setzeKuerzel()
+        /* DAS VERZEICHNIS KOMMT NACH DER TELEFONIE, nicht davor. Wer
+           die App öffnet, will telefonieren können; Namen und Bilder
+           sind Beiwerk, das nachziehen darf. Die Bremse im Verzeichnis
+           sorgt dafür, dass das nicht bei jedem Start eine Anfrage
+           ist. */
+        Verzeichnis.beiAenderung = { zeigeKontakte() }
+        Verzeichnis.lade(this)
         // Der Verlauf ist der Einstieg: Wer die App öffnet, will
         // meistens zurückrufen. Das Wählfeld ist einen Tipp entfernt.
         binding.leiste.selectedItemId = R.id.leiste_anrufe
@@ -196,9 +210,16 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      * „funktioniert nicht".
      */
     private fun setupLeereBereiche() {
-        binding.viewKontakte.leerZeichen.setImageResource(R.drawable.ic_kontakte)
-        binding.viewKontakte.leerTitel.setText(R.string.leer_kontakte_titel)
-        binding.viewKontakte.leerText.setText(R.string.leer_kontakte_text)
+        binding.viewKontakte.kontakteLeerTitel.setText(R.string.leer_kontakte_titel)
+        binding.viewKontakte.kontakteLeerText.setText(R.string.leer_kontakte_text)
+        binding.viewKontakte.kontakteListe.layoutManager = LinearLayoutManager(this)
+        kontakteAdapter = KontakteAdapter { ziel ->
+            /* EIN DRUCK WÄHLT und wechselt in den Anrufbereich – wer
+               hier tippt, will telefonieren. */
+            LinphoneManager.call(ziel)
+        }
+        binding.viewKontakte.kontakteListe.adapter = kontakteAdapter
+        zeigeKontakte()
         binding.viewNachrichten.leerZeichen.setImageResource(R.drawable.ic_voicemail)
         binding.viewNachrichten.leerTitel.setText(R.string.leer_nachrichten_titel)
         binding.viewNachrichten.leerText.setText(R.string.leer_nachrichten_text)
@@ -293,6 +314,40 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     // ---------- Anrufliste ----------
 
+    /**
+     * Das Gesicht des Gegenübers einblenden – oder ausblenden.
+     *
+     * NUR WENN ES EINES GIBT. Ein leerer Kreis sieht aus wie ein Bild,
+     * das nicht geladen hat; der Name darunter steht ohnehin da.
+     */
+    private fun zeigeGesicht() {
+        val bild = Verzeichnis.bild(gegenueberId)
+        if (bild != null) {
+            binding.callerFoto.setImageBitmap(bild)
+            binding.callerFoto.visibility = View.VISIBLE
+        } else {
+            binding.callerFoto.setImageDrawable(null)
+            binding.callerFoto.visibility = View.GONE
+        }
+    }
+
+    private var kontakteAdapter: KontakteAdapter? = null
+
+    /**
+     * Die Kontaktliste nachziehen – Liste oder leerer Zustand.
+     *
+     * SICHTBAR IST IMMER GENAU EINES. „Nichts da" und „kaputt" sehen
+     * sonst gleich aus, und der Bereich springt beim ersten Laden.
+     */
+    private fun zeigeKontakte() {
+        val leute = Verzeichnis.kollegen
+        val buch = Verzeichnis.kontakte
+        kontakteAdapter?.setze(leute, buch)
+        val leer = leute.isEmpty() && buch.isEmpty()
+        binding.viewKontakte.kontakteListe.visibility = if (leer) View.GONE else View.VISIBLE
+        binding.viewKontakte.kontakteLeer.visibility = if (leer) View.VISIBLE else View.GONE
+    }
+
     private var verlauf: VerlaufAdapter? = null
 
     /**
@@ -376,10 +431,34 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 .apply()
             Zugangsspeicher.setzePasswort(this, binding.password.text.toString())
             connect()
+            /* DEN AUSWEIS FÜR DEN DIENST HOLEN – nach dem Absenden,
+               nicht davor. Sind die Zugangsdaten falsch, scheitert
+               ohnehin schon die Registrierung; zwei Fehlermeldungen für
+               einen Tippfehler sind eine zu viel.
+
+               Und es hält nichts auf: Wer kein Netz zum Dienst hat,
+               telefoniert trotzdem. Kontakte und Bilder ziehen später
+               nach. Dieselbe Regel wie auf iOS. */
+            holeAusweis()
             setzeKuerzel()
             binding.leiste.selectedItemId = R.id.leiste_tastenfeld
             showTab(Tab.DIALPAD)
         }
+    }
+
+    /**
+     * Name und Passwort einmal gegen das Token des Dienstes tauschen –
+     * im Hintergrundfaden, weil Android eine App beendet, die im
+     * Hauptfaden ins Netz geht.
+     */
+    private fun holeAusweis() {
+        val name = prefs().getString("username", "")?.trim() ?: ""
+        val wort = Zugangsspeicher.passwort(this)
+        if (name.isEmpty() || wort.isEmpty()) return
+        val app = applicationContext
+        Thread {
+            if (Dienst.hole(app, name, wort)) Verzeichnis.lade(app, erzwingen = true)
+        }.start()
     }
 
     private fun connect() {
@@ -552,8 +631,24 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     override fun onCallState(call: Call, state: Call.State?, message: String) {
         runOnUiThread {
-            val who = call.remoteAddress.displayName ?: call.remoteAddress.username
+            /* WER IST DA? – aus dem VERZEICHNIS, nicht nur aus dem
+               SIP-Kopf. `displayName` setzt die Gegenstelle, und bei
+               einem Anruf von draußen steht dort meistens gar nichts
+               oder die Nummer noch einmal. Der Name aus dem eigenen
+               Verzeichnis ist der, den der Mensch wiedererkennt – und
+               nur über ihn kommt man an sein Bild.
+
+               Gesucht wird im GERÄT (Verzeichnis.wer): Beim Klingeln
+               ist keine Zeit für eine Anfrage, und ohne Netz gäbe es
+               gar keine Antwort. Dieselbe Regel wie auf iOS. */
+            val nummer = call.remoteAddress.username ?: ""
+            val treffer = Verzeichnis.wer(nummer)
+            val who = treffer?.first
+                ?: call.remoteAddress.displayName
+                ?: call.remoteAddress.username
                 ?: call.remoteAddress.asStringUriOnly()
+            gegenueberId = treffer?.second
+            zeigeGesicht()
             when (state) {
                 Call.State.IncomingReceived, Call.State.IncomingEarlyMedia -> {
                     binding.callerInfo.text = who

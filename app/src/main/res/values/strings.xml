@@ -92,4 +92,5 @@
     <string name="eingehender_anruf">Eingehender Anruf</string>
     <string name="laufendes_gespraech">Gespräch läuft</string>
     <string name="unbekannter_anrufer">Unbekannt</string>
+    <string name="foto_des_anrufers">Bild des Anrufers</string>
 </resources>
