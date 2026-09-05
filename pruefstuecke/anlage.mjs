@@ -50,7 +50,26 @@ console.log("\n1) Es gibt eine Datei, in der die Anlage steht");
     "hier gehören Serveradresse und Transport hin – und nur hier");
   if (dateien.includes("Anlage.kt")) {
     const t = lies("Anlage.kt");
-    pruefe("und sie nennt die Serveradresse", /pbx\.dariatech\.de/.test(t));
+    /* DER SIP-NAME IST sip.dariatech.de – UND DAS IST KEIN GESCHMACK.
+       Befund vom 05.09.2026, nachgemessen im Namensdienst:
+
+         pbx.dariatech.de → 104.21.14.53, 172.67.157.219,
+                            2606:4700:3030::6815:e35   (Cloudflare)
+         sip.dariatech.de → 178.254.6.5                (die Anlage)
+
+       Cloudflares Proxy führt HTTP und HTTPS weiter, sonst nichts – ein
+       REGISTER über UDP kommt dort nie an. Wer diesen Namen einträgt,
+       baut eine App, die sich niemals anmelden kann, und der Fehler
+       sieht aus wie ein Netzproblem beim Kunden.
+
+       DASSELBE STEHT IM iOS-REPO. Zwei Apps mit zwei Servern wären zwei
+       Fehlerbilder für dieselbe Ursache. */
+    const ohneKommentar = t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    pruefe("und sie nennt die SIP-Adresse der Anlage", /"sip\.dariatech\.de"/.test(t),
+      (t.match(/const val SERVER = "([^"]*)"/) ?? [])[1] ?? "keine gefunden");
+    pruefe("und NICHT den Namen hinter dem CDN",
+      !/pbx\.dariatech\.de|portal\.dariatech\.de/.test(ohneKommentar),
+      "Cloudflare führt nur HTTP/HTTPS weiter – SIP kommt dort nie an");
     pruefe("und den Transport", /"UDP"|"TCP"|"TLS"/.test(t));
   }
 }
@@ -59,7 +78,7 @@ console.log("\n2) Die Serveradresse steht nur an dieser einen Stelle");
 {
   const woanders = dateien
     .filter((d) => d !== "Anlage.kt")
-    .filter((d) => /pbx\.dariatech\.de/.test(lies(d)));
+    .filter((d) => /sip\.dariatech\.de/.test(lies(d)));
   pruefe("kein zweites Vorkommen im Kotlin-Quelltext",
     woanders.length === 0, woanders.join(", "));
 }

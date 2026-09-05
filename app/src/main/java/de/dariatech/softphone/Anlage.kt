@@ -38,8 +38,29 @@ object Anlage {
      * das nur für die Weboberfläche – SIP läuft dort nicht durch.
      * Maßgeblich ist die Adresse, die das Portal bei den Nebenstellen
      * als SIP-Server anzeigt.
+     *
+     * UND GENAU DAS IST HIER PASSIERT. Bis zum 05.09.2026 stand hier
+     * `pbx.dariatech.de` – der Name, unter dem die Anlage in den
+     * Betriebsdokumenten geführt wird. Nachgemessen im Namensdienst:
+     *
+     *     pbx.dariatech.de → 104.21.14.53, 172.67.157.219,
+     *                        2606:4700:3030::6815:e35
+     *     sip.dariatech.de → 178.254.6.5
+     *
+     * Die erste Reihe gehört Cloudflare. Deren Proxy führt HTTP und
+     * HTTPS weiter und sonst nichts – ein REGISTER über UDP kommt dort
+     * nie an. Eine App mit diesem Namen kann sich nicht anmelden, und
+     * der Fehler sieht für den Kunden aus wie ein Netzproblem bei ihm.
+     *
+     * Der SIP-Name ist `sip.dariatech.de`; so steht er auch im
+     * Störungsprotokoll der Anlage (REGISTER von
+     * <sip:…@sip.dariatech.de>). Wer die Anlage umzieht, ändert diesen
+     * Namen im Namensdienst – nicht diese Zeile.
+     *
+     * DIESELBE ZEILE STEHT IN Anlage.swift der iOS-App. Wer hier
+     * ändert, ändert dort mit.
      */
-    const val SERVER = "pbx.dariatech.de"
+    const val SERVER = "sip.dariatech.de"
 
     /**
      * UDP – wie bisher.
