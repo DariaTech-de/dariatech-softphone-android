@@ -98,13 +98,19 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
         LinphoneManager.listener = this
         showCallUi(inCall = false, ringing = false)
-        setzeKuerzel()
+        zeigeProfil()
         /* DAS VERZEICHNIS KOMMT NACH DER TELEFONIE, nicht davor. Wer
            die App öffnet, will telefonieren können; Namen und Bilder
            sind Beiwerk, das nachziehen darf. Die Bremse im Verzeichnis
            sorgt dafür, dass das nicht bei jedem Start eine Anfrage
            ist. */
-        Verzeichnis.beiAenderung = { zeigeKontakte() }
+        /* AUCH DAS EIGENE PROFIL. Das Verzeichnis kommt aus dem Netz und
+           ist beim Start leer; ohne diese Zeile stünde bis zum nächsten
+           App-Start das Kürzel da, obwohl das Bild längst geladen ist. */
+        Verzeichnis.beiAenderung = {
+            zeigeKontakte()
+            zeigeProfil()
+        }
         Verzeichnis.lade(this)
         // Der Verlauf ist der Einstieg: Wer die App öffnet, will
         // meistens zurückrufen. Das Wählfeld ist einen Tipp entfernt.
@@ -226,22 +232,50 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     }
 
     /**
-     * Das Namenskürzel im Profilknopf.
+     * Der Profilknopf: das eigene BILD, sonst die Initialen.
      *
-     * Aus dem SIP-Benutzernamen: „ahmadsaber.temori" wird „AT". Ein
-     * leeres Feld bekommt einen Punkt statt zwei Leerzeichen – ein
-     * Kreis, in dem nichts steht, sieht nach einem Ladefehler aus.
+     * DER AUFTRAG (Inhaber, 05.09.2026): „In der App soll auch das
+     * Profilbild vom Nutzer angezeigt werden."
+     *
+     * Bis dahin stand hier ein Kreis mit zwei Buchstaben aus dem
+     * SIP-BENUTZERNAMEN. Zwei Dinge stimmten daran nicht: Das Bild, das
+     * die Kollegen beim Anruf sehen, sah der Mensch selbst nie – und
+     * seit die SIP-Namen unerratbar sind (`nst-e492zth5a84g`), wurde
+     * daraus für JEDEN im Haus dasselbe Kürzel „NS".
+     *
+     * Beides beantwortet derselbe Eintrag: der eigene Mensch aus der
+     * Kollegenliste. Kennt die App ihn noch nicht (kein Token, noch
+     * nichts geladen), bleibt der alte Weg über den Benutzernamen – ein
+     * leerer Kreis sähe aus wie ein Ladefehler.
      */
-    private fun setzeKuerzel() {
-        val name = prefs().getString("username", "") ?: ""
-        val teile = name.split(".", "_", "-", " ").filter { it.isNotBlank() }
-        val kuerzel = when {
-            teile.size >= 2 -> "${teile[0].first()}${teile[1].first()}"
-            teile.size == 1 -> teile[0].take(2)
-            else -> "·"
+    private fun zeigeProfil() {
+        val ich = Verzeichnis.ich(this)
+        val bild = Verzeichnis.bild(ich?.id)
+        if (bild != null) {
+            binding.profilBild.setImageDrawable(rund(bild))
+            binding.profilBild.visibility = View.VISIBLE
+            binding.profilKuerzel.visibility = View.GONE
+            return
         }
-        binding.profilKuerzel.text = kuerzel.uppercase()
+        binding.profilBild.visibility = View.GONE
+        binding.profilKuerzel.visibility = View.VISIBLE
+        binding.profilKuerzel.text =
+            if (ich != null) Verzeichnis.kuerzel(ich.name)
+            else Verzeichnis.kuerzel(prefs().getString("username", "") ?: "")
     }
+
+    /**
+     * Ein Bild als Kreis.
+     *
+     * WARUM NICHT IM LAYOUT: Ein ImageView schneidet nicht rund zu.
+     * Dieselben Bilder liegen im Portal und auf dem iPhone in einem
+     * Kreis; ein Quadrat auf Android hieße, derselbe Mensch sähe auf
+     * jedem Gerät anders aus.
+     */
+    private fun rund(bild: android.graphics.Bitmap) =
+        androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
+            .create(resources, bild)
+            .apply { isCircular = true }
 
     // ---------- Wähltastatur ----------
 
@@ -323,7 +357,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     private fun zeigeGesicht() {
         val bild = Verzeichnis.bild(gegenueberId)
         if (bild != null) {
-            binding.callerFoto.setImageBitmap(bild)
+            binding.callerFoto.setImageDrawable(rund(bild))
             binding.callerFoto.visibility = View.VISIBLE
         } else {
             binding.callerFoto.setImageDrawable(null)
@@ -440,7 +474,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                telefoniert trotzdem. Kontakte und Bilder ziehen später
                nach. Dieselbe Regel wie auf iOS. */
             holeAusweis()
-            setzeKuerzel()
+            zeigeProfil()
             binding.leiste.selectedItemId = R.id.leiste_tastenfeld
             showTab(Tab.DIALPAD)
         }

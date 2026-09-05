@@ -86,6 +86,29 @@ object Verzeichnis {
     // ---- Rückwärtssuche ----
 
     /**
+     * Wer bin ich?
+     *
+     * DIE FRAGE IST NICHT TRIVIAL, und deshalb steht sie hier und nicht
+     * an drei Stellen: Die App kennt ihren SIP-Benutzernamen, aber der
+     * steht in keiner Kollegenliste – und seit die Namen unerratbar
+     * sind (`nst-e492zth5a84g`), sagt er auch nichts mehr über den
+     * Menschen. Die Anlage nennt beim Tausch des Tokens die interne
+     * Nummer der Nebenstelle, und die steht bei genau einem Menschen
+     * unter `nebenstellen`.
+     *
+     * Findet sich keiner, gehört dieser Apparat niemandem (ein
+     * Konferenzraum, ein Türsprecher). Dann gibt es kein eigenes Bild,
+     * und das ist keine Störung.
+     *
+     * Dieselbe Regel wie in der iPhone-App (Verzeichnis.ich).
+     */
+    fun ich(context: Context): Kollege? {
+        val meine = Dienst.eigeneNebenstelle(context)
+        if (meine.isEmpty()) return null
+        return kollegen.firstOrNull { it.nebenstellen.contains(meine) }
+    }
+
+    /**
      * Wer ist das? Liefert Namen und – wenn es einen gibt – die Kennung
      * des Menschen, an der sein Bild hängt.
      *

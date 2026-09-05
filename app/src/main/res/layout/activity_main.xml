@@ -42,6 +42,20 @@
                 android:contentDescription="@string/profil_oeffnen"
                 android:focusable="true">
 
+                <!-- DAS EIGENE BILD. Auftrag des Inhabers vom
+                     05.09.2026: „In der App soll auch das Profilbild
+                     vom Nutzer angezeigt werden." Es liegt ÜBER dem
+                     Kürzel und ist ausgeblendet, solange keines da ist –
+                     ein leerer Kreis sähe aus wie ein Ladefehler. -->
+                <ImageView
+                    android:id="@+id/profilBild"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/profil_oeffnen"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
                 <TextView
                     android:id="@+id/profilKuerzel"
                     android:layout_width="36dp"
