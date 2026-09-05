@@ -36,6 +36,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Ein Gespräch im Chat. Eine Activity, die hier fehlt,
+             stürzt beim Öffnen ab (ActivityNotFoundException) – und
+             zwar erst am Gerät, nicht beim Übersetzen. -->
+        <activity
+            android:name=".GespraechsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Hält die SIP-Registrierung im Hintergrund (Liblinphone-Dienst) -->
         <service
             android:name="org.linphone.core.tools.service.CoreService"

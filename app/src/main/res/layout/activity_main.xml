@@ -345,9 +345,15 @@
                 layout="@layout/view_kontakte"
                 android:visibility="gone" />
 
+            <!-- SEIT DEM 06.09.2026 DER CHAT DES HAUSES. Hier lag ein
+                 leerer Zustand für Voicemail; der Auftrag des Inhabers
+                 war ein anderer: „die Mitarbeiter der gleichen
+                 Organisation sich gegenseitig finden und chatten".
+                 Die Sprachnachrichten bekommen ihren Ort, wenn die
+                 Anlage sie für das Telefon herausgibt. -->
             <include
-                android:id="@+id/viewNachrichten"
-                layout="@layout/view_leer"
+                android:id="@+id/viewChat"
+                layout="@layout/view_chat"
                 android:visibility="gone" />
         </FrameLayout>
 

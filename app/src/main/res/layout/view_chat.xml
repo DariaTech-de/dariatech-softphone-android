@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DER BEREICH „NACHRICHTEN": die Menschen des Hauses.
+
+  Hier stehen ALLE Kollegen, auch die, mit denen man noch nie
+  geschrieben hat. Ein Chat, der nur bestehende Gespräche zeigt,
+  beantwortet die Frage „wie erreiche ich die Kollegin aus der
+  Buchhaltung?" nicht – und genau die stand im Auftrag.
+
+  Liste und leerer Zustand liegen ÜBEREINANDER; sichtbar ist immer
+  genau eines.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/chatListe"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="12dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/chatLeer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:alpha="0.35"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_voicemail" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/chat_leer_titel"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/chat_leer_text"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+    </LinearLayout>
+</FrameLayout>

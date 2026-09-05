@@ -93,4 +93,12 @@
     <string name="laufendes_gespraech">Gespräch läuft</string>
     <string name="unbekannter_anrufer">Unbekannt</string>
     <string name="foto_des_anrufers">Bild des Anrufers</string>
+
+    <!-- Der Chat des Hauses (Auftrag des Inhabers, 06.09.2026). -->
+    <string name="chat_leer_titel">Noch keine Kollegen</string>
+    <string name="chat_leer_text">Sobald die Anmeldung bei der Anlage steht, stehen hier die Menschen Ihres Hauses.</string>
+    <string name="chat_eingabe">Nachricht</string>
+    <string name="chat_senden">Senden</string>
+    <string name="chat_noch_nichts">Noch keine Nachrichten</string>
+    <string name="chat_fehler_senden">Die Nachricht ließ sich nicht senden. Prüfen Sie die Verbindung.</string>
 </resources>

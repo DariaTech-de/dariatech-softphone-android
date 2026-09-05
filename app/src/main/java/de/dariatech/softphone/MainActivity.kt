@@ -110,6 +110,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         Verzeichnis.beiAenderung = {
             zeigeKontakte()
             zeigeProfil()
+            zeigeChat()
         }
         Verzeichnis.lade(this)
         // Der Verlauf ist der Einstieg: Wer die App öffnet, will
@@ -198,9 +199,17 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.viewHistory.visibility = if (tab == Tab.HISTORY) View.VISIBLE else View.GONE
         binding.viewSettings.visibility = if (tab == Tab.SETTINGS) View.VISIBLE else View.GONE
         binding.viewKontakte.root.visibility = if (tab == Tab.KONTAKTE) View.VISIBLE else View.GONE
-        binding.viewNachrichten.root.visibility =
+        binding.viewChat.root.visibility =
             if (tab == Tab.NACHRICHTEN) View.VISIBLE else View.GONE
         if (tab == Tab.HISTORY) refreshHistory()
+        if (tab == Tab.NACHRICHTEN) {
+            /* BEIM ÖFFNEN NACHSEHEN. Das Verzeichnis liefert die
+               Menschen, das Postfach ihre Worte – ohne beides steht der
+               Bereich leer da, obwohl alles schon geladen sein könnte. */
+            Verzeichnis.lade(this)
+            Postfach.lade(this)
+            zeigeChat()
+        }
     }
 
     /**
@@ -226,9 +235,41 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         }
         binding.viewKontakte.kontakteListe.adapter = kontakteAdapter
         zeigeKontakte()
-        binding.viewNachrichten.leerZeichen.setImageResource(R.drawable.ic_voicemail)
-        binding.viewNachrichten.leerTitel.setText(R.string.leer_nachrichten_titel)
-        binding.viewNachrichten.leerText.setText(R.string.leer_nachrichten_text)
+        binding.viewChat.chatListe.layoutManager = LinearLayoutManager(this)
+        Postfach.beiAenderung = { zeigeChat() }
+    }
+
+    /**
+     * Die Liste im Bereich „Nachrichten" nachziehen.
+     *
+     * SICHTBAR IST IMMER GENAU EINES – Liste oder leerer Zustand.
+     * „Nichts da" und „kaputt" sehen sonst gleich aus.
+     *
+     * OHNE EIGENE KENNUNG GEHT NICHTS: Die App muss wissen, WER sie
+     * ist, sonst weiß sie bei keiner Nachricht, ob sie von ihr kommt.
+     * Solange kein Token da ist, steht der leere Zustand.
+     */
+    private fun zeigeChat() {
+        val ich = Verzeichnis.ich(this)?.id
+        val leute = if (ich == null) emptyList() else Verzeichnis.kollegen.filter { it.id != ich }
+        if (ich == null || leute.isEmpty()) {
+            binding.viewChat.chatListe.visibility = View.GONE
+            binding.viewChat.chatLeer.visibility = View.VISIBLE
+            return
+        }
+        if (chatAdapter == null) {
+            chatAdapter = ChatAdapter(this, ich) { kollege ->
+                startActivity(
+                    Intent(this, GespraechsActivity::class.java)
+                        .putExtra(GespraechsActivity.ZIEL, kollege.id)
+                        .putExtra(GespraechsActivity.NAME, kollege.name)
+                )
+            }
+            binding.viewChat.chatListe.adapter = chatAdapter
+        }
+        chatAdapter?.setze(leute)
+        binding.viewChat.chatListe.visibility = View.VISIBLE
+        binding.viewChat.chatLeer.visibility = View.GONE
     }
 
     /**
@@ -366,6 +407,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     }
 
     private var kontakteAdapter: KontakteAdapter? = null
+    private var chatAdapter: ChatAdapter? = null
 
     /**
      * Die Kontaktliste nachziehen – Liste oder leerer Zustand.
@@ -460,8 +502,19 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.password.setText(Zugangsspeicher.passwort(this))
 
         binding.connectButton.setOnClickListener {
+            /* WECHSELT DER MENSCH, GEHEN SEINE NACHRICHTEN MIT.
+               Ein anderer Benutzername an diesem Gerät heißt: ein
+               anderer Mensch. Bliebe das Postfach stehen, läse er die
+               Nachrichten seines Vorgängers – auf einem Diensthandy,
+               das weitergegeben wird, der wahrscheinlichste Fall. */
+            val vorher = prefs.getString("username", "") ?: ""
+            val jetzt = binding.username.text.toString().trim()
+            if (vorher != jetzt) {
+                Postfach.leere(this)
+                Verzeichnis.leere(this)
+            }
             prefs.edit()
-                .putString("username", binding.username.text.toString().trim())
+                .putString("username", jetzt)
                 .apply()
             Zugangsspeicher.setzePasswort(this, binding.password.text.toString())
             connect()

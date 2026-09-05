@@ -111,6 +111,46 @@ object Dienst {
         }
     }
 
+    /**
+     * Eine Nachricht an einen Kollegen.
+     *
+     * ÜBER DIE ANLAGE, NICHT ÜBER SIP. SIP MESSAGE erreicht nur
+     * ANGEMELDETE Geräte. Beendet Android den Vordergrunddienst – und
+     * das tut es, wenn der Akku knapp wird –, wäre die Nachricht WEG,
+     * nicht verspätet. Über den Dienst liegt sie auf der Anlage, bis
+     * sie jemand abholt, auf jedem seiner Geräte.
+     */
+    fun sendeNachricht(context: Context, an: String, text: String): Nachricht? {
+        val rumpf = JSONObject().put("an", an).put("text", text).toString().toByteArray()
+        val roh = sende("/nachrichten", "POST", rumpf, "application/json", token(context))
+            ?: return null
+        return try {
+            Nachricht.aus(JSONObject(String(roh)).getJSONObject("nachricht"))
+        } catch (e: Exception) {
+            Log.w(TAG, "Antwort auf die Nachricht unlesbar: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Alles Neue seit einem Zeitpunkt.
+     *
+     * `seit` ist die Zeit der jüngsten Nachricht, die das Gerät schon
+     * hat. Ohne diesen Schnitt lüde das Telefon bei JEDER Frage den
+     * ganzen Verlauf – über Mobilfunk, auf Kosten des Kunden.
+     */
+    fun nachrichten(context: Context, seit: Long = 0L): List<Nachricht> {
+        val roh = sende("/nachrichten?seit=$seit", "GET", null, null, token(context))
+            ?: return emptyList()
+        return try {
+            val liste = JSONObject(String(roh)).optJSONArray("nachrichten") ?: return emptyList()
+            (0 until liste.length()).map { Nachricht.aus(liste.getJSONObject(it)) }
+        } catch (e: Exception) {
+            Log.w(TAG, "Nachrichtenliste unlesbar: ${e.message}")
+            emptyList()
+        }
+    }
+
     /** Das Bild eines Menschen – roh, wie es kommt. */
     fun foto(context: Context, benutzerId: String): ByteArray? =
         sende("/foto/$benutzerId", "GET", null, null, token(context))
@@ -164,6 +204,34 @@ object Dienst {
         } finally {
             verbindung?.disconnect()
         }
+    }
+}
+
+/**
+ * Eine Nachricht, wie die Anlage sie liefert.
+ *
+ * `zeit` sind Millisekunden seit 1970 – dieselbe Uhr wie überall in der
+ * Anlage und wie in der iPhone-App. In Sekunden umzurechnen wäre die
+ * Stelle, an der zwei Geräte verschiedene Reihenfolgen zeigen.
+ */
+data class Nachricht(
+    val id: String,
+    val von: String,
+    val an: String,
+    val text: String,
+    val zeit: Long
+) {
+    /** Der andere – egal in welche Richtung die Nachricht lief. */
+    fun gegenueber(ich: String): String = if (von == ich) an else von
+
+    companion object {
+        fun aus(o: JSONObject) = Nachricht(
+            id = o.optString("id"),
+            von = o.optString("von"),
+            an = o.optString("an"),
+            text = o.optString("text"),
+            zeit = o.optLong("zeit")
+        )
     }
 }
 
