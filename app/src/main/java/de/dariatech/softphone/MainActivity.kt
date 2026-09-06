@@ -545,7 +545,16 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         if (name.isEmpty() || wort.isEmpty()) return
         val app = applicationContext
         Thread {
-            if (Dienst.hole(app, name, wort)) Verzeichnis.lade(app, erzwingen = true)
+            if (Dienst.hole(app, name, wort)) {
+                Verzeichnis.lade(app, erzwingen = true)
+                /* SOFORT DEN EIGENEN SCHLÜSSEL ANMELDEN (Stufe 3 der
+                   Verschlüsselung). Ohne ihn kann kein Kollege für
+                   dieses Gerät verschlüsseln, und die ersten
+                   Nachrichten kämen als „war für dieses Gerät nicht
+                   bestimmt" an. Eine ältere Anlage kennt den Weg nicht
+                   – dann chattet die App wie bisher. */
+                Dienst.meldeSchluessel(app)
+            }
         }.start()
     }
 

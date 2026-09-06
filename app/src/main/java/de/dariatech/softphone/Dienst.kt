@@ -120,8 +120,54 @@ object Dienst {
      * nicht verspätet. Über den Dienst liegt sie auf der Anlage, bis
      * sie jemand abholt, auf jedem seiner Geräte.
      */
-    fun sendeNachricht(context: Context, an: String, text: String): Nachricht? {
-        val rumpf = JSONObject().put("an", an).put("text", text).toString().toByteArray()
+    /**
+     * Den öffentlichen Schlüssel DIESES Geräts bei der Anlage anmelden.
+     *
+     * Läuft nach jeder Anmeldung und beim Start. Die Anlage verwahrt
+     * ihn und gibt ihn den Kollegen; rechnen tut sie damit nichts – der
+     * private Teil liegt im verschlüsselten Speicher dieses Telefons.
+     *
+     * Fehlschläge sind hier KEIN Drama: Eine ältere Anlage kennt den
+     * Weg nicht (404), und dann chattet die App wie bisher.
+     */
+    fun meldeSchluessel(context: Context): Boolean {
+        val oeffentlich = Ende2Ende.oeffentlich(context)
+        if (oeffentlich.isEmpty()) return false
+        val rumpf = JSONObject()
+            .put("geraet", Ende2Ende.geraetId(context))
+            .put("oeffentlich", oeffentlich)
+            .toString().toByteArray()
+        return sende("/schluessel", "POST", rumpf, "application/json", token(context)) != null
+    }
+
+    /**
+     * Einen gemeldeten Schlüsselwechsel bestätigen, nachdem die App ihn
+     * gezeigt hat. Eine Warnung, die nie verschwindet, liest nach der
+     * dritten Woche niemand mehr.
+     */
+    fun bestaetigeWechsel(context: Context, geraet: String): Boolean {
+        val rumpf = JSONObject().put("geraet", geraet).put("bestaetigt", true)
+            .toString().toByteArray()
+        return sende("/schluessel", "POST", rumpf, "application/json", token(context)) != null
+    }
+
+    fun sendeNachricht(
+        context: Context,
+        an: String,
+        text: String,
+        umschlaege: Map<String, String> = emptyMap()
+    ): Nachricht? {
+        /* MIT UMSCHLÄGEN GEHT KEIN TEXT MIT. Sonst läge der Klartext
+           neben dem Chiffrat auf der Platte der Anlage, und die ganze
+           Stufe wäre eine Behauptung. */
+        val o = JSONObject().put("an", an)
+        if (umschlaege.isNotEmpty()) {
+            o.put("umschlaege", JSONObject(umschlaege as Map<*, *>))
+            o.put("geraet", Ende2Ende.geraetId(context))
+        } else {
+            o.put("text", text)
+        }
+        val rumpf = o.toString().toByteArray()
         val roh = sende("/nachrichten", "POST", rumpf, "application/json", token(context))
             ?: return null
         return try {
@@ -218,20 +264,36 @@ data class Nachricht(
     val id: String,
     val von: String,
     val an: String,
+    /**
+     * Der Text – LEER, wenn die Nachricht Ende-zu-Ende verschlüsselt
+     * ist. Dann steht sie in `umschlaege`, und die Anlage kann sie
+     * nicht lesen. Beim Empfang wird sie im Gerät geöffnet (Postfach).
+     */
     val text: String,
-    val zeit: Long
+    val zeit: Long,
+    /** Ein Umschlag je Gerät: Gerätekennung → Chiffrat (base64). */
+    val umschlaege: Map<String, String> = emptyMap(),
+    /** Mit welchem GERÄT der Absender geschrieben hat. */
+    val absenderGeraet: String = ""
 ) {
     /** Der andere – egal in welche Richtung die Nachricht lief. */
     fun gegenueber(ich: String): String = if (von == ich) an else von
 
     companion object {
-        fun aus(o: JSONObject) = Nachricht(
-            id = o.optString("id"),
-            von = o.optString("von"),
-            an = o.optString("an"),
-            text = o.optString("text"),
-            zeit = o.optLong("zeit")
-        )
+        fun aus(o: JSONObject): Nachricht {
+            val u = o.optJSONObject("umschlaege")
+            val umschlaege = mutableMapOf<String, String>()
+            if (u != null) for (k in u.keys()) umschlaege[k] = u.optString(k)
+            return Nachricht(
+                id = o.optString("id"),
+                von = o.optString("von"),
+                an = o.optString("an"),
+                text = o.optString("text"),
+                zeit = o.optLong("zeit"),
+                umschlaege = umschlaege,
+                absenderGeraet = o.optString("absenderGeraet")
+            )
+        }
     }
 }
 
@@ -251,7 +313,14 @@ data class Kollege(
     val durchwahl: String,
     val nebenstellen: List<String>,
     /** Marke seines Bildes. Leer heißt: er hat keines. */
-    val foto: String
+    val foto: String,
+    /**
+     * Seine Geräte mit ihren öffentlichen Schlüsseln (Stufe 3 des
+     * Masterplans). Leer heißt: diese Anlage führt kein
+     * Schlüsselverzeichnis, oder er hat noch keine App angemeldet –
+     * dann geht der Chat wie bisher.
+     */
+    val geraete: List<Geraeteschluessel> = emptyList()
 ) {
     companion object {
         fun aus(o: JSONObject): Kollege {
@@ -262,9 +331,38 @@ data class Kollege(
                 nummer = o.optString("nummer"),
                 durchwahl = o.optString("durchwahl"),
                 nebenstellen = (0 until (nst?.length() ?: 0)).map { nst!!.getString(it) },
-                foto = o.optString("foto")
+                foto = o.optString("foto"),
+                geraete = o.optJSONArray("geraete").let { g ->
+                    (0 until (g?.length() ?: 0)).map { Geraeteschluessel.aus(g!!.getJSONObject(it)) }
+                }
             )
         }
+    }
+}
+
+/**
+ * Ein Gerät eines Kollegen – mit dem Schlüssel, für den man verschließt.
+ */
+data class Geraeteschluessel(
+    val id: String,
+    val schluessel: String,
+    val fingerabdruck: String,
+    /**
+     * Dieses Gerät hat seinen Schlüssel GEWECHSELT.
+     *
+     * Kein Nebensatz: Ein Wechsel heißt entweder „neu installiert" oder
+     * „jemand schiebt sich dazwischen". Die App zeigt es an, damit der
+     * Mensch den Fingerabdruck noch einmal vergleicht.
+     */
+    val gewechselt: Boolean
+) {
+    companion object {
+        fun aus(o: JSONObject) = Geraeteschluessel(
+            id = o.optString("id"),
+            schluessel = o.optString("schluessel"),
+            fingerabdruck = o.optString("fingerabdruck"),
+            gewechselt = o.optBoolean("gewechselt", false)
+        )
     }
 }
 

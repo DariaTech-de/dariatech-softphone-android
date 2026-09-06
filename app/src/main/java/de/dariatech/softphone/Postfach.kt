@@ -107,9 +107,59 @@ object Postfach {
     fun haengeAn(context: Context, neue: List<Nachricht>) {
         val bekannt = alle.map { it.id }.toMutableSet()
         val zusammen = alle.toMutableList()
-        for (n in neue) if (bekannt.add(n.id)) zusammen.add(n)
+        for (roh in neue) if (bekannt.add(roh.id)) zusammen.add(geoeffnet(context, roh))
         alle = zusammen.sortedBy { it.zeit }.takeLast(HOECHSTENS)
         sichere(context)
+    }
+
+    /**
+     * Eine Ende-zu-Ende-Nachricht aufmachen.
+     *
+     * Gesucht wird der Umschlag für DIESES Gerät und der öffentliche
+     * Schlüssel GENAU des Geräts, mit dem der Absender geschrieben hat –
+     * nicht irgendeines seiner Geräte.
+     *
+     * BESTANDSSCHUTZ: Eine Nachricht ohne Umschläge geht unverändert
+     * durch. Eine ältere App, die noch Klartext schickt, wird nicht
+     * unsichtbar.
+     *
+     * GEHT ES NICHT AUF, bleibt ein deutscher Satz stehen statt
+     * Kauderwelsch. Der häufigste Grund ist harmlos und gehört gesagt:
+     * Der Absender hat verschlüsselt, bevor DIESES Gerät seinen
+     * Schlüssel angemeldet hatte.
+     */
+    private fun geoeffnet(context: Context, n: Nachricht): Nachricht {
+        if (n.umschlaege.isEmpty()) return n
+        val meiner = n.umschlaege[Ende2Ende.geraetId(context)]
+            ?: return n.copy(
+                text = "Diese Nachricht war für dieses Gerät nicht bestimmt – " +
+                    "sie kam an, bevor es seinen Schlüssel angemeldet hatte."
+            )
+        val absender = Verzeichnis.kollegen.firstOrNull { it.id == n.von }
+        val geraet = absender?.geraete?.firstOrNull { it.id == n.absenderGeraet }
+            ?: return n.copy(text = "Diese Nachricht ließ sich nicht entschlüsseln.")
+        val klar = Ende2Ende.oeffne(context, meiner, geraet.schluessel)
+            ?: return n.copy(text = "Diese Nachricht ließ sich nicht entschlüsseln.")
+        return n.copy(text = klar)
+    }
+
+    /**
+     * Für welche Geräte wird verschlüsselt?
+     *
+     * Die des Empfängers UND DIE EIGENEN ANDEREN. Ohne die zweiten
+     * stünde die eigene Nachricht auf dem eigenen Rechner nicht im
+     * Verlauf – man schriebe ins Leere und sähe es erst beim
+     * Gerätewechsel.
+     *
+     * Kommt nichts zusammen (ältere Anlage ohne Schlüsselverzeichnis,
+     * Kollege ohne App), bleibt die Liste leer: Dann geht die Nachricht
+     * wie bisher als Text. Ausgesperrt wird niemand.
+     */
+    private fun empfaengergeraete(context: Context, an: String, ich: String): List<Geraeteschluessel> {
+        val kollegen = Verzeichnis.kollegen
+        val ziel = kollegen.firstOrNull { it.id == an }?.geraete ?: emptyList()
+        val eigene = kollegen.firstOrNull { it.id == ich }?.geraete ?: emptyList()
+        return ziel + eigene
     }
 
     /**
@@ -133,12 +183,22 @@ object Postfach {
         haengeAn(app, listOf(vorlaeufig))
         beiAenderung?.invoke()
         faden.execute {
-            val echt = Dienst.sendeNachricht(app, an, sauber)
+            /* VERSCHLÜSSELT, WENN ES GEHT. Die Anlage bekommt dann kein
+               Wort des Textes zu sehen – siehe Ende2Ende. */
+            val umschlaege = Ende2Ende.verschliesse(
+                app, sauber, empfaengergeraete(app, an, ich)
+            )
+            val echt = Dienst.sendeNachricht(app, an, sauber, umschlaege)
             alle = alle.filter { it.id != vorlaeufig.id }
-            if (echt != null) haengeAn(app, listOf(echt)) else sichere(app)
+            /* DER EIGENE TEXT BLEIBT LOKAL STEHEN. Die Anlage gibt eine
+               verschlüsselte Nachricht ohne Text zurück – sie hat ihn
+               nie gesehen. Würde man das übernehmen, verschwände das
+               eigene Wort eine Sekunde nach dem Abschicken. */
+            val meine = if (echt != null && echt.text.isEmpty()) echt.copy(text = sauber) else echt
+            if (meine != null) haengeAn(app, listOf(meine)) else sichere(app)
             hauptfaden.post {
                 beiAenderung?.invoke()
-                fertig(echt != null)
+                fertig(meine != null)
             }
         }
     }
@@ -159,6 +219,10 @@ object Postfach {
         zuletzt = 0L
         geladen = true
         datei(context).delete()
+        /* UND DAS SCHLÜSSELPAAR DIESES GERÄTS. Bliebe es liegen,
+           könnte der Nächste am selben Gerät die Post des Vorigen
+           öffnen, sobald sie nachgeladen wird. */
+        Ende2Ende.vergiss(context)
     }
 
     private fun sichere(context: Context) {

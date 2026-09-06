@@ -48,6 +48,8 @@ class GespraechsActivity : AppCompatActivity() {
         supportActionBar?.title = intent.getStringExtra(NAME) ?: wer
         binding.gespraechLeiste.setNavigationOnClickListener { finish() }
 
+        zeigeFingerabdruck()
+
         blasen = BlasenAdapter(ich)
         binding.blasenListe.layoutManager = LinearLayoutManager(this)
         binding.blasenListe.adapter = blasen
@@ -67,6 +69,31 @@ class GespraechsActivity : AppCompatActivity() {
            Absturz. */
         if (Postfach.beiAenderung != null) Postfach.beiAenderung = null
         super.onDestroy()
+    }
+
+    /**
+     * Der Fingerabdruck des Gegenübers – unter seinem Namen.
+     *
+     * ER IST DER EINZIGE WEG, aus dem Verschlüsseln eine Gewissheit zu
+     * machen: Wer ganz sicher sein will, liest ihn dem anderen am
+     * Telefon vor. Stimmen beide überein, hat sich niemand
+     * dazwischengeschoben. Ohne diese Möglichkeit ist Ende-zu-Ende ein
+     * Versprechen der Anlage – und genau der wollte man ja nicht mehr
+     * glauben müssen.
+     *
+     * BEI EINEM WECHSEL steht die Warnung statt des Fingerabdrucks:
+     * „neu installiert" und „jemand schiebt sich dazwischen" sehen von
+     * hier gleich aus, und deshalb entscheidet der Mensch, nicht die
+     * App.
+     */
+    private fun zeigeFingerabdruck() {
+        val geraete = Verzeichnis.kollegen.firstOrNull { it.id == wer }?.geraete ?: emptyList()
+        supportActionBar?.subtitle = when {
+            geraete.isEmpty() -> null
+            geraete.any { it.gewechselt } ->
+                getString(R.string.chat_schluessel_gewechselt, geraete.first { it.gewechselt }.fingerabdruck)
+            else -> getString(R.string.chat_fingerabdruck, geraete.joinToString(", ") { it.fingerabdruck })
+        }
     }
 
     private fun zeichneNeu() {

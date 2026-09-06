@@ -43,6 +43,12 @@ dependencies {
     // Siehe Zugangsspeicher.kt – ein SIP-Passwort im Klartext ist eine
     // Telefonrechnung, die jemand anderes schreibt.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    /* X25519 für den Ende-zu-Ende-Chat (Stufe 3 der Verschlüsselung).
+       Androids eigenes „XDH" gibt es erst ab API 33; diese App läuft ab
+       API 26, und ein halbes Haus ohne Verschlüsselung wäre keine
+       Verschlüsselung. Die Kurve von Hand zu rechnen ist genau die
+       Stelle, an der stille Fehler wohnen. */
+    implementation("com.google.crypto.tink:tink-android:1.13.0")
     // Der Anrufverlauf als Liste – siehe VerlaufAdapter.
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
