@@ -1,6 +1,8 @@
 package de.dariatech.softphone
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.view.TextureView
 import org.linphone.core.Account
 import org.linphone.core.AudioDevice
@@ -8,6 +10,7 @@ import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
 import org.linphone.core.Factory
+import org.linphone.core.MediaEncryption
 import org.linphone.core.RegistrationState
 import org.linphone.core.TransportType
 
@@ -58,6 +61,28 @@ object LinphoneManager {
         // ist ein Datenschutzvorfall mit Ansage. Die Anlage gibt Video
         // frei (Einstellungen → Video); DASS es läuft, entscheidet hier
         // die Person am Gerät.
+        // DIE SPRACHE WIRD VERSCHLÜSSELT (SRTP) – seit dem 06.09.2026.
+        //
+        // ANLASS: Der Auftrag des Inhabers, Punkt 11 aus Stufe 2 des
+        // Masterplans. Ohne diese Zeile geht das Gespräch als offenes
+        // RTP durchs Netz, und im WLAN eines Hotels hört jeder mit, der
+        // danebensitzt.
+        //
+        // UND ES IST KEIN SCHMUCK MEHR, SONDERN PFLICHT: Die Anlage
+        // legt seit demselben Tag NEUE Nebenstellen mit
+        // `media_encryption=sdes` und `media_encryption_optimistic=no`
+        // an – also STRIKT. Eine App ohne SRTP bekäme dort überhaupt
+        // kein Gespräch zustande.
+        //
+        // `isMediaEncryptionMandatory = false` ist der Bestandsschutz:
+        // Nebenstellen, die es seit Jahren gibt, sprechen weiter offen.
+        // Auf `true` wäre die Härtung eine Aussperrung – und wer nicht
+        // telefonieren kann, ruft auch keine 112.
+        // `setMediaEncryption` gibt einen Status zurueck, deshalb kein
+        // Zuweisungs-Schreibstil: Kotlin macht daraus keine Eigenschaft.
+        core.setMediaEncryption(MediaEncryption.SRTP)
+        core.isMediaEncryptionMandatory = false
+
         core.isVideoCaptureEnabled = true
         core.isVideoDisplayEnabled = true
         val politik = factory.createVideoActivationPolicy()
@@ -120,8 +145,63 @@ object LinphoneManager {
         }
     }
 
+    /**
+     * Die Signalisierung läuft UNVERSCHLÜSSELT – weil die Anlage kein
+     * SIP über TLS annimmt und die App zurückgefallen ist.
+     *
+     * WARUM DAS SICHTBAR SEIN MUSS: Ein Rückfall, den niemand sieht,
+     * ist schlimmer als gar kein Versuch. Der Kunde hielte die App für
+     * verschlüsselt, obwohl im Netz mitzulesen ist, wer wen anruft.
+     */
+    var signalisierungOffen = false
+        private set
+
+    /** Was zuletzt angemeldet wurde – der Rückfall braucht es noch einmal. */
+    private var letzterBenutzer = ""
+    private var letztesPasswort = ""
+    private var letzteDomain = ""
+    private var versuchMitTls = false
+    private val uhr = Handler(Looper.getMainLooper())
+
     /** Meldet das Konto an; vorhandene Konten werden ersetzt. */
     fun login(username: String, password: String, domain: String, transport: TransportType) {
+        letzterBenutzer = username
+        letztesPasswort = password
+        letzteDomain = domain
+        versuchMitTls = transport == TransportType.Tls
+        if (versuchMitTls) signalisierungOffen = false
+        melde(username, password, domain, transport)
+        if (versuchMitTls) beobachteTlsVersuch()
+    }
+
+    /**
+     * Acht Sekunden auf eine Anmeldung warten, sonst zurückfallen.
+     *
+     * Gewartet wird eine feste, kurze Zeit statt auf einen Fehlercode:
+     * Ein TLS-Handschlag ins Leere endet je nach Netz mit einem
+     * Zeitablauf, einem Verbindungsabbruch oder gar nichts. Auf „keine
+     * Anmeldung nach acht Sekunden" ist Verlass, auf die Fehlermeldung
+     * nicht.
+     */
+    private fun beobachteTlsVersuch() {
+        uhr.postDelayed({
+            if (versuchMitTls && !istRegistriert()) faelleZurueck()
+        }, 8_000)
+    }
+
+    private fun faelleZurueck() {
+        versuchMitTls = false
+        signalisierungOffen = true
+        android.util.Log.w(
+            "Anlage",
+            "Diese Anlage nimmt kein SIP über TLS an. Anmeldung über " +
+                "${Anlage.RUECKFALL_TRANSPORT}; die Sprache bleibt durch SRTP " +
+                "verschlüsselt, die Signalisierung nicht."
+        )
+        melde(letzterBenutzer, letztesPasswort, letzteDomain, TransportType.Udp)
+    }
+
+    private fun melde(username: String, password: String, domain: String, transport: TransportType) {
         core.clearAccounts()
         core.clearAllAuthInfo()
 

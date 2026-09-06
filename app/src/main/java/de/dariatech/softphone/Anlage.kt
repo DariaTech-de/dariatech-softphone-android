@@ -63,15 +63,38 @@ object Anlage {
     const val SERVER = "sip.dariatech.de"
 
     /**
-     * UDP – wie bisher.
+     * TLS zuerst – seit dem 06.09.2026.
      *
-     * Nicht TCP, obwohl die Anlage es seit dem 26.08.2026 anbietet und
-     * es gegen SIP-ALG in Heimnetzen hilft: Ein Transportwechsel ist
-     * eine Verhaltensänderung für jeden Kunden im Feld, und die gehört
-     * gemessen, nicht nebenbei mitgenommen. Wer umstellen will, ändert
-     * diese eine Zeile auf "TCP" und weist es am Gerät nach.
+     * DER AUFTRAG (Inhaber): „Es muss alles verschlüsselt werden."
+     * Punkt 11 aus Stufe 2 des Masterplans. Ohne TLS geht die
+     * SIGNALISIERUNG offen durchs Netz: die Anmeldung, und bei jedem
+     * Anruf, wer wen anruft und wann. Im WLAN eines Hotels liest das
+     * jeder mit, der danebensitzt.
+     *
+     * Bis hierher stand "UDP", mit der Begründung, ein
+     * Transportwechsel sei eine Verhaltensänderung für jeden Kunden im
+     * Feld und gehöre gemessen. Das gilt weiter – und genau deshalb
+     * steht daneben der RÜCKFALL.
+     *
+     * DIESELBE ZEILE STEHT IN Anlage.swift der iOS-App.
      */
-    const val TRANSPORT = "UDP"
+    const val TRANSPORT = "TLS"
+
+    /**
+     * Der Weg, auf den zurückgefallen wird, wenn die Anlage kein TLS
+     * annimmt.
+     *
+     * WARUM ES IHN GEBEN MUSS: Ob die Anlage SIP über TLS annimmt,
+     * hängt an einem `[transport-tls]` in ihrer pjsip.conf, den ein
+     * Mensch einrichten muss (im Repository der Anlage:
+     * docs/NEUER-SERVER.md, Schritt 6b). Fehlt er, bekommt eine App,
+     * die auf TLS besteht, keine Anmeldung mehr – und ein nicht
+     * angemeldetes Telefon wählt auch keine 112.
+     *
+     * UDP und nicht TCP: Es ist der Weg, auf dem jedes Gerät dieser
+     * Kunden seit Jahren telefoniert.
+     */
+    const val RUECKFALL_TRANSPORT = "UDP"
 
     /**
      * Der Dienst der Anlage für alles, was NICHT Telefonie ist:

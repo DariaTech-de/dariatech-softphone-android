@@ -287,6 +287,20 @@
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="13sp" />
 
+                    <!-- WORAN DER KUNDE IST (Punkt 11 aus Stufe 2 der
+                         Verschluesselung, 06.09.2026). Verschluesselung,
+                         die man nur behauptet, ist keine. Der Text
+                         wechselt zwischen zwei Saetzen, je nachdem, ob
+                         die Anlage SIP ueber TLS annimmt oder die App
+                         zurueckgefallen ist. -->
+                    <TextView
+                        android:id="@+id/verschluesselungZeile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp" />
+
                     <!-- Neu anmelden, OHNE das Passwort noch einmal zu
                          tippen. Nach einem Netzwechsel (WLAN zu Mobilfunk)
                          steht die Registrierung manchmal still, bis etwas

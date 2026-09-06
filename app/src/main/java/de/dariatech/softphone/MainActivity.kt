@@ -487,6 +487,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         Anlage.raeumeAltbestandAuf(prefs)
 
         binding.anlageZeile.text = getString(R.string.anlage_zeile, Anlage.anzeige)
+        zeigeVerschluesselung()
         binding.username.setText(prefs.getString("username", ""))
         zeigeDienst()
         binding.neuAnmelden.setOnClickListener {
@@ -546,6 +547,20 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         Thread {
             if (Dienst.hole(app, name, wort)) Verzeichnis.lade(app, erzwingen = true)
         }.start()
+    }
+
+    /**
+     * Zeigt an, was WIRKLICH gilt – nicht, was die App gerne hätte.
+     *
+     * Fällt die App auf den offenen Transport zurück, weil die Anlage
+     * kein SIP über TLS annimmt, steht das hier. Ein Rückfall, den
+     * niemand sieht, ist schlimmer als gar kein Versuch.
+     */
+    private fun zeigeVerschluesselung() {
+        binding.verschluesselungZeile.setText(
+            if (LinphoneManager.signalisierungOffen) R.string.verschluesselung_offen
+            else R.string.verschluesselung_zu
+        )
     }
 
     private fun connect() {
@@ -655,6 +670,12 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     override fun onRegistration(state: RegistrationState?, message: String) {
         runOnUiThread {
+            // Der Rueckfall auf den offenen Transport meldet sich als
+            // neue Registrierung. Ohne diese Zeile stuende in den
+            // Einstellungen weiter „verschluesselt", waehrend die App
+            // laengst offen telefoniert – genau die Luege, gegen die
+            // die Anzeige gebaut ist.
+            zeigeVerschluesselung()
             when (state) {
                 RegistrationState.Ok -> {
                     binding.status.text = getString(R.string.connected)
