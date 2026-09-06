@@ -57,6 +57,33 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      * Android-Einstellungen. Gefragt wird im Moment des Bedarfs, weil
      * dann klar ist, wofür.
      */
+    /**
+     * Bluetooth – der Ton im AUTO und am Kopfhörer.
+     *
+     * GEFUNDEN AM 06.09.2026 beim Nachfahren der Auto-Etappe:
+     * `BLUETOOTH_CONNECT` stand über Liblinphone im Paket, wurde aber
+     * NIRGENDS erfragt. Seit Android 12 ist sie eine
+     * Laufzeitberechtigung – ohne Zustimmung schaltet das System den
+     * Ton nicht auf ein Bluetooth-Gerät. Der Anruf erscheint dann zwar
+     * im Auto (das macht Telecom), aber man hört nichts über die
+     * Anlage des Wagens. Genau der halbe Zustand, den Etappe 1
+     * beseitigen sollte.
+     *
+     * Das Ergebnis wird BEWUSST nicht ausgewertet: Wer ablehnt, soll
+     * weiter telefonieren können – über den Lautsprecher des Telefons.
+     * Eine Ablehnung ist kein Fehler.
+     */
+    private val bluetoothRecht =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { erlaubt ->
+            if (!erlaubt) {
+                android.util.Log.i(
+                    "MainActivity",
+                    "Bluetooth wurde abgelehnt – der Ton bleibt am Telefon, " +
+                        "nicht am Auto oder Kopfhörer."
+                )
+            }
+        }
+
     private var videoNachFreigabe = false
     private val kameraFreigabe =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { erlaubt ->
@@ -83,6 +110,12 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         // irgendwo ein Fehler stand.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             meldeRecht.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        /* UND BLUETOOTH, seit Android 12. Ohne die Zustimmung geht der
+           Ton nie auf die Anlage des Wagens – der Anruf steht dann im
+           Auto, aber man hört ihn am Telefon. */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            bluetoothRecht.launch(Manifest.permission.BLUETOOTH_CONNECT)
         }
         behandleAbsicht(intent)
 

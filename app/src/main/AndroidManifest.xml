@@ -1,11 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- DER ANRUF GEHÖRT DEM SYSTEM (Etappe 1, docs/AUFTRAG-AUTO.md).
          Ohne MANAGE_OWN_CALLS nimmt Telecom keinen selbstverwalteten
          Anruf entgegen – und damit ist die App im Auto unsichtbar.
          Die Berechtigung ist nicht gefährlich und wird nicht erfragt. -->
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+
+    <!-- ZWEI DIENSTEARTEN, DIE WIR NICHT BENUTZEN, kommen über die
+         Bibliotheken herein (Liblinphone, AndroidX). Unser
+         Vordergrunddienst erklärt `phoneCall|microphone` und sonst
+         nichts – Kamera und Datenabgleich sind nicht dabei. Google
+         verlangt seit Android 14 für JEDE erklärte Diensteart eine
+         Begründung bei der Einreichung; eine Berechtigung für eine Art,
+         die es hier gar nicht gibt, erzeugt dort nur eine Rückfrage.
+
+         GEFUNDEN AM 06.09.2026 beim Nachfahren: Das Prüfstück las bis
+         dahin unser eigenes Manifest und sah die eingemischten
+         Berechtigungen prinzipiell nicht. Es liest jetzt das PAKET. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"
+        tools:node="remove" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Video: Die Kamera wird NUR gebraucht, wenn jemand im Gespräch auf

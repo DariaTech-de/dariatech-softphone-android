@@ -54,6 +54,25 @@ kein Analysewerkzeug und keine Werbung in dieser App.
 | `FOREGROUND_SERVICE_MICROPHONE` | Der Dienst trägt auch den Ton des Gesprächs. |
 | `MANAGE_OWN_CALLS` | Die App meldet ihre Anrufe beim System an (Telecom, selbstverwaltet). Erst dadurch erscheint ein Anruf in **Android Auto**, an der Freisprecheinrichtung und auf dem Sperrbildschirm, und erst dadurch weiß ein hereinkommender GSM-Anruf, dass hier schon telefoniert wird. **Nicht gefährlich**, wird nicht erfragt, gibt keinen Zugriff auf die Anrufliste oder den Wähler des Telefons: Selbstverwaltete Anrufe bleiben von der Telefon-App getrennt. Siehe [`AUFTRAG-AUTO.md`](AUFTRAG-AUTO.md), Etappe 1. |
 
+Die folgenden Berechtigungen stehen **nicht** in unserem Manifest. Gradle
+mischt sie beim Bau aus den Bibliotheken herein (Liblinphone, AndroidX) –
+Google sieht sie trotzdem, weil Google das PAKET sieht und nicht unseren
+Quelltext. Sie gehören genauso begründet:
+
+| Berechtigung | Warum sie im Paket steht |
+|---|---|
+| `BLUETOOTH_CONNECT` | Der Ton geht über Freisprecheinrichtung, Kopfhörer und **Auto**. Seit Android 12 eine Laufzeitberechtigung: Ohne sie schaltet das System den Ton nicht auf das Bluetooth-Gerät. Die App erfragt sie beim ersten Gespräch, nicht beim Start – ein Berechtigungsdialog vor der ersten Nutzung erklärt nichts. |
+| `BLUETOOTH` | Derselbe Zweck auf Android 11 und älter. Aus Liblinphone. |
+| `ACCESS_WIFI_STATE` | Liblinphone erkennt daran den Netzwechsel (WLAN → Mobilfunk) und meldet die Registrierung neu an. Ohne das klingelt das Telefon nach einem Wechsel nicht mehr. |
+| `CHANGE_WIFI_MULTICAST_STATE` | Aus Liblinphone: mDNS im lokalen Netz. Unsere App benutzt es nicht, aber es lässt sich nicht gefahrlos entfernen, ohne den SIP-Stack am Gerät zu prüfen – und diese Prüfung steht aus. **Bewusst stehengelassen und hier benannt**, statt still entfernt. |
+| `ACCESS_NOTIFICATION_POLICY` | Aus Liblinphone: klingeln auch bei „Nicht stören", wie es eine Telefon-App tut. Dieselbe Einschränkung wie oben. |
+| `VIBRATE` | Ein eingehender Anruf vibriert, wenn das Gerät stumm ist. |
+| `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | Legt AndroidX selbst an, Schutzstufe *signature*, app-eigen. Taucht in der Play-Konsole nicht auf. |
+
+**Entfernt** (mit `tools:node="remove"`): `FOREGROUND_SERVICE_CAMERA` und
+`FOREGROUND_SERVICE_DATA_SYNC`. Unser Vordergrunddienst erklärt
+`phoneCall|microphone` und sonst nichts.
+
 **Was NICHT gefragt wird und auch nicht gefragt werden soll:**
 Standort, Kontakte des Telefons, Speicher, `READ_PHONE_STATE`,
 Werbekennung.

@@ -21,7 +21,8 @@
  *
  * Aufruf:  node pruefstuecke/store-freigabe.mjs
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const ergebnisse = [];
 const pruefe = (name, ok, extra = "") => {
@@ -101,17 +102,52 @@ pruefe(
   "Punkt 39: Play verlangt eine Adresse"
 );
 
-console.log("\n6) Und jede Berechtigung im Manifest steht auch in der Liste");
+/* GEPRÜFT WIRD DAS GEBAUTE PAKET, NICHT DAS EIGENE MANIFEST.
+   Berichtigt am 06.09.2026 nach einem Nachfahren. Bis dahin las dieser
+   Abschnitt `app/src/main/AndroidManifest.xml` – und sah damit
+   grundsätzlich nur die Hälfte: Beim Bau mischt Gradle die
+   Berechtigungen der Bibliotheken (Liblinphone, AndroidX) hinein. Im
+   ausgelieferten Paket standen NEUN Berechtigungen, die in keiner
+   Prüfliste vorkamen, darunter FOREGROUND_SERVICE_CAMERA,
+   FOREGROUND_SERVICE_DATA_SYNC und BLUETOOTH_CONNECT.
+   Google sieht das Paket, nicht unser Manifest. Also sieht dieses
+   Prüfstück ab jetzt dasselbe. */
+console.log("\n6) Und jede Berechtigung im GEBAUTEN PAKET steht auch in der Liste");
 {
-  const gefragt = [...manifest.matchAll(/uses-permission android:name="android\.permission\.([A-Z_]+)"/g)].map(
-    (m) => m[1]
-  );
-  const fehlend = gefragt.filter((p) => !liste.includes(p));
-  pruefe(
-    "keine unbegründete Berechtigung",
-    fehlend.length === 0,
-    "nicht in der Prüfliste begründet: " + fehlend.join(", ")
-  );
+  const apk = "app/build/outputs/apk/debug/app-debug.apk";
+  const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || "/opt/android-sdk";
+  let aapt = "";
+  try {
+    aapt = readdirSync(`${sdk}/build-tools`).sort().reverse()
+      .map((v) => `${sdk}/build-tools/${v}/aapt2`).find((w) => existsSync(w)) || "";
+  } catch { /* kein SDK da */ }
+
+  if (!existsSync(apk) || !aapt) {
+    /* KEIN GRÜN OHNE PAKET. Ein Prüfstück, das mangels Bau stillschweigend
+       durchwinkt, ist genau die Lücke, die hier behoben wurde. */
+    pruefe(
+      "das gebaute Paket liegt vor und lässt sich lesen",
+      false,
+      !existsSync(apk)
+        ? `${apk} fehlt – erst \`gradle assembleDebug\` laufen lassen`
+        : `aapt2 nicht gefunden unter ${sdk}/build-tools`
+    );
+  } else {
+    const roh = execFileSync(aapt, ["dump", "permissions", apk], { encoding: "utf-8" });
+    const gefragt = [...roh.matchAll(/^uses-permission: name='android\.permission\.([A-Z_]+)'/gm)]
+      .map((m) => m[1]);
+    const fehlend = [...new Set(gefragt)].filter((p) => !liste.includes(p));
+    pruefe(
+      "keine unbegründete Berechtigung im Paket",
+      fehlend.length === 0,
+      "nicht in der Prüfliste begründet: " + fehlend.join(", ")
+    );
+    pruefe(
+      "und das Paket trägt überhaupt Berechtigungen (das Lesen hat geklappt)",
+      gefragt.length > 5,
+      `${gefragt.length} gelesen`
+    );
+  }
 }
 
 const fehler = ergebnisse.filter(([, ok]) => !ok);

@@ -106,9 +106,18 @@ was jetzt.
 ### 4. Der Bau bleibt grün
 
 ```bash
-node pruefstuecke/*.mjs                # Quelltext-Verträge (ohne Gerät)
 gradle assembleDebug --no-daemon       # Java 17, Android SDK 34
+node pruefstuecke/*.mjs                # Quelltext-Verträge (ohne Gerät)
 ```
+
+**Die Reihenfolge ist seit dem 06.09.2026 umgedreht, und zwar aus einem
+Grund:** `store-freigabe.mjs` liest die Berechtigungen aus dem GEBAUTEN
+PAKET, nicht aus dem Manifest. Vorher las es unser eigenes Manifest –
+und sah damit prinzipiell nur die Hälfte, weil Gradle beim Bau die
+Berechtigungen der Bibliotheken hineinmischt. Acht davon standen im
+ausgelieferten Paket, keine einzige war begründet. Google sieht das
+Paket, nicht unseren Quelltext; also sieht das Prüfstück jetzt dasselbe.
+Ohne vorherigen Bau schlägt es fehl – das ist Absicht.
 
 Die Prüfstücke in `pruefstuecke/` sind eigenständige Node-Skripte, wie in
 der Anlage. Sie prüfen, was sich OHNE Gerät prüfen lässt – etwa dass das
