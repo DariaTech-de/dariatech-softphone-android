@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  KEINE DATEN VERLASSEN DIESES GERÄT (Android 12 und neuer).
+
+  Weder in Googles Cloud-Sicherung noch beim Übertragen auf ein neues
+  Telefon. Der Grund steht im Manifest bei allowBackup: Im privaten
+  Speicher liegt der PRIVATE Schlüssel des Ende-zu-Ende-Chats, und die
+  Zusage lautet „er verlässt das Gerät nie".
+
+  Der Preis, offen benannt: Wer das Telefon wechselt, meldet sich neu
+  an und bekommt einen neuen Schlüssel. Sein bisheriger Chatverlauf
+  bleibt auf dem alten Gerät. Das ist genau der Preis, den Stufe 3 des
+  Masterplans nennt – und die Alternative wäre, ihn stillschweigend
+  aufzuheben.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

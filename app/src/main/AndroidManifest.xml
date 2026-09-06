@@ -14,15 +14,42 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <!-- Seit Android 14 braucht JEDER Typ eines Vordergrunddienstes seine
+         eigene Erlaubnis. Der Dienst hält nicht nur die Registrierung, er
+         trägt auch den Ton des Gesprächs – ohne diese Zeile wirft Android
+         beim Start, und zwar erst am Gerät. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- KEINE SICHERUNG DURCH GOOGLE, und das ist die wichtigste Zeile
+         dieser Datei.
+
+         Androids Vorgabe für allowBackup ist WAHR. Damit wandert der
+         private Anwendungsspeicher in Googles Sicherung – und darin
+         liegt seit Stufe 3 der Verschlüsselung der PRIVATE Schlüssel
+         des Ende-zu-Ende-Chats. Die Zusage lautet „er verlässt das
+         Gerät nie"; mit einer Sicherung wäre sie unwahr, und der
+         Nächste, der die App auf einem neuen Telefon wiederherstellt,
+         läse die Post des Vorigen.
+
+         usesCleartextTraffic=false ist Plays automatische Prüfung: Ein
+         Klartext-HTTP im Netz weist der Store ab. Diese App braucht
+         keines – der Dienst der Anlage besteht auf TLS.
+
+         Die drei Zeilen zur Sicherung stehen zusammen, weil Android sie
+         je nach Fassung unterschiedlich liest: allowBackup bis 11,
+         fullBackupContent bis 11, dataExtractionRules ab 12. -->
     <application
         android:name=".SoftphoneApp"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.DariaTech"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/keine_datenentnahme">
 
         <activity
             android:name=".MainActivity"
@@ -49,7 +76,7 @@
         <service
             android:name="org.linphone.core.tools.service.CoreService"
             android:exported="false"
-            android:foregroundServiceType="phoneCall"
+            android:foregroundServiceType="phoneCall|microphone"
             android:stopWithTask="false" />
     </application>
 </manifest>
