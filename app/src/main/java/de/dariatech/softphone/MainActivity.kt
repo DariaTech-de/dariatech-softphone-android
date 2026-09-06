@@ -566,6 +566,30 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      * niemand sieht, ist schlimmer als gar kein Versuch.
      */
     private fun zeigeVerschluesselung() {
+        /* DREI ZUSTÄNDE, NICHT ZWEI (Durchsicht 06.09.2026). Neu ist
+           der mittlere: Die App ist GAR NICHT angemeldet, weil sie sich
+           weigert, still auf den offenen Weg zurückzufallen – TLS ging
+           bei dieser Anlage schon einmal, ein Fehlschlag ist also
+           verdächtig. Das gehört an die auffälligste Stelle und nicht
+           in eine Zeile, die nur nachschlägt, wer ohnehin misstraut.
+           Der Knopf bleibt, weil die Alternative „gar nicht angemeldet"
+           heißt und ein nicht angemeldetes Telefon keine 112 wählt. */
+        if (LinphoneManager.tlsBlockiert) {
+            binding.verschluesselungZeile.setText(R.string.verschluesselung_blockiert)
+            binding.verschluesselungZeile.setOnClickListener {
+                android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.verschluesselung_blockiert_titel)
+                    .setMessage(R.string.verschluesselung_blockiert_text)
+                    .setPositiveButton(R.string.verschluesselung_trotzdem) { _, _ ->
+                        LinphoneManager.offenAnmelden()
+                        zeigeVerschluesselung()
+                    }
+                    .setNegativeButton(R.string.abbrechen, null)
+                    .show()
+            }
+            return
+        }
+        binding.verschluesselungZeile.setOnClickListener(null)
         binding.verschluesselungZeile.setText(
             if (LinphoneManager.signalisierungOffen) R.string.verschluesselung_offen
             else R.string.verschluesselung_zu

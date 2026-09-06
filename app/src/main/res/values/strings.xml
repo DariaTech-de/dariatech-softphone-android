@@ -41,14 +41,28 @@
     <!-- Die drei Zustände des Gesprächs. Drei Texte, weil es drei
          Zustände sind – ein Schloss, das immer gleich aussieht, wäre
          eine Lüge. %1$s ist das Sicherheitswort. -->
-    <string name="gespraech_e2e">Ende-zu-Ende verschlüsselt · %1$s – vorlesen und bestätigen</string>
-    <string name="gespraech_e2e_ok">Ende-zu-Ende verschlüsselt · %1$s ✓</string>
+    <!-- KEIN „Ende-zu-Ende", DAS NICHT GEPRÜFT IST (Durchsicht 06.09.2026).
+         Solange „Sicheres Direktgespräch" in der Anlage aus ist – der
+         Regelfall –, steht sie im Sprachweg und handelt ZRTP als zwei
+         getrennte Strecken aus. Beide Seiten sahen ein Schloss mit
+         „Ende-zu-Ende", während die Anlage vollständig mithörte – und
+         die Beschriftung erklärte ausgerechnet den Vergleich für
+         überflüssig, der das aufgedeckt hätte. -->
+    <string name="gespraech_e2e">Verschlüsselt mit Sicherheitswort · %1$s – vorlesen und bestätigen</string>
+    <string name="gespraech_e2e_ok">Verschlüsselt mit Sicherheitswort · %1$s ✓</string>
+    <string name="gespraech_e2e_bedingung">Das Wort beweist nur etwas, wenn beide Seiten dasselbe Wort lesen.</string>
     <string name="gespraech_bis_anlage">Verschlüsselt bis zur Anlage</string>
     <string name="gespraech_offen">Unverschlüsselt</string>
     <string name="chat_fingerabdruck">Verschlüsselt · %1$s</string>
     <string name="chat_schluessel_gewechselt">Neuer Schlüssel: %1$s – bitte vorlesen lassen</string>
+    <string name="chat_geraet_neu">Neues Gerät: %1$s – bitte vorlesen lassen</string>
     <string name="verschluesselung_zu">Verschlüsselt: Sprache (SRTP) und Signalisierung (TLS)</string>
     <string name="verschluesselung_offen">Sprache verschlüsselt (SRTP), Signalisierung offen: Diese Anlage nimmt kein SIP über TLS an. Wer im selben Netz mitliest, sieht, wer wen anruft und wann.</string>
+    <string name="verschluesselung_blockiert">Verschlüsselte Verbindung kommt nicht zustande – antippen</string>
+    <string name="verschluesselung_blockiert_titel">Die verschlüsselte Verbindung kommt nicht zustande</string>
+    <string name="verschluesselung_blockiert_text">Bei dieser Anlage hat sie schon einmal funktioniert. Das kann am Netz liegen – oder daran, dass jemand sie absichtlich verhindert, um mitzulesen. Die App versucht es weiter.\n\nMelden Sie sich unverschlüsselt an, sieht jeder im selben Netz, wer wen anruft und wann. Und weil der Medienschlüssel bei SRTP in der Signalisierung steht, kann er damit auch das Gespräch selbst öffnen.</string>
+    <string name="verschluesselung_trotzdem">Trotzdem unverschlüsselt anmelden</string>
+    <string name="abbrechen">Abbrechen</string>
     <string name="telefondienst_section">Telefondienst</string>
     <string name="zugangsdaten_section">Zugangsdaten</string>
     <string name="neu_anmelden">Neu anmelden</string>

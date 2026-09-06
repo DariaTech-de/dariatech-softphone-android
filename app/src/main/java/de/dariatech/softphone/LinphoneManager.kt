@@ -96,6 +96,7 @@ object LinphoneManager {
                 state: RegistrationState?,
                 message: String
             ) {
+                if (state == RegistrationState.Ok) anmeldungGeglueckt()
                 listener?.onRegistration(state, message)
             }
 
@@ -156,6 +157,18 @@ object LinphoneManager {
     var signalisierungOffen = false
         private set
 
+    /**
+     * Der verschlüsselte Weg kommt nicht zustande, obwohl er hier schon
+     * einmal ging.
+     *
+     * NICHT dasselbe wie [signalisierungOffen]: Dort ist die App offen
+     * angemeldet, hier ist sie GAR NICHT angemeldet – weil sie sich
+     * weigert, still zurückzufallen. Der Mensch entscheidet
+     * ([offenAnmelden]), die App versucht derweil weiter TLS.
+     */
+    var tlsBlockiert = false
+        private set
+
     /** Was zuletzt angemeldet wurde – der Rückfall braucht es noch einmal. */
     private var letzterBenutzer = ""
     private var letztesPasswort = ""
@@ -185,8 +198,54 @@ object LinphoneManager {
      */
     private fun beobachteTlsVersuch() {
         uhr.postDelayed({
-            if (versuchMitTls && !istRegistriert()) faelleZurueck()
+            if (!versuchMitTls || istRegistriert()) return@postDelayed
+            /* NUR WO TLS NOCH NIE GING, FÄLLT SIE VON SELBST ZURÜCK.
+               Sonst wäre der Rückfall vom Netz erzwingbar: Wer Pakete
+               nach 5061 verwirft, bekommt die App nach acht Sekunden
+               auf offenes UDP – samt der SDES-Schlüssel im SDP. Wo TLS
+               schon einmal ging, entscheidet ab jetzt der Mensch, und
+               die App versucht es in der Zwischenzeit weiter. */
+            val ctx = appContext
+            if (ctx != null && Transportgedaechtnis.tlsGingSchon(ctx, letzteDomain)) {
+                tlsBlockiert = true
+                android.util.Log.w(
+                    "Anlage",
+                    "Der verschlüsselte Weg (TLS) kommt nicht zustande, obwohl er " +
+                        "bei dieser Anlage schon einmal ging. Es wird weiter versucht; " +
+                        "auf den offenen Weg schaltet nur der Mensch."
+                )
+                beobachteTlsVersuch()
+                return@postDelayed
+            }
+            faelleZurueck()
         }, 8_000)
+    }
+
+    /**
+     * Der Mensch schaltet bewusst auf den offenen Weg.
+     *
+     * Angeboten wird das nur, wenn [tlsBlockiert] steht – also wenn die
+     * App sich weigert, es von selbst zu tun. Es bleibt angeboten, weil
+     * die Alternative „gar nicht angemeldet" heißt, und ein nicht
+     * angemeldetes Telefon wählt auch keine 112.
+     */
+    fun offenAnmelden() {
+        if (!tlsBlockiert) return
+        tlsBlockiert = false
+        faelleZurueck()
+    }
+
+    /**
+     * Die Anmeldung ist geglückt – vom Registrierungsereignis gemeldet.
+     *
+     * GEGLÜCKT ÜBER TLS HEISST: HIER GEHT TLS. Ab jetzt ist ein
+     * Fehlschlag verdächtig und kein Grund mehr, still auf den offenen
+     * Weg zurückzufallen.
+     */
+    fun anmeldungGeglueckt() {
+        if (!versuchMitTls) return
+        tlsBlockiert = false
+        appContext?.let { Transportgedaechtnis.merke(it, letzteDomain) }
     }
 
     private fun faelleZurueck() {
@@ -194,9 +253,13 @@ object LinphoneManager {
         signalisierungOffen = true
         android.util.Log.w(
             "Anlage",
-            "Diese Anlage nimmt kein SIP über TLS an. Anmeldung über " +
-                "${Anlage.RUECKFALL_TRANSPORT}; die Sprache bleibt durch SRTP " +
-                "verschlüsselt, die Signalisierung nicht."
+            // KEINE BEHAUPTUNG ÜBER DIE ANLAGE: Der Code weiß nur, dass
+            // binnen acht Sekunden keine Anmeldung zustande kam – nicht,
+            // WARUM. „Diese Anlage nimmt kein TLS an" stand hier bis zum
+            // 06.09.2026 und war im Angriffsfall schlicht falsch.
+            "Über TLS kam keine Anmeldung zustande. Anmeldung über " +
+                "${Anlage.RUECKFALL_TRANSPORT} – die Signalisierung geht damit " +
+                "offen über das Netz."
         )
         melde(letzterBenutzer, letztesPasswort, letzteDomain, TransportType.Udp)
     }

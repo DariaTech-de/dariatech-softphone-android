@@ -1,5 +1,6 @@
 package de.dariatech.softphone
 
+import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 
@@ -150,5 +151,49 @@ object Anlage {
                 .remove(ALT_VORLAGE)
                 .apply()
         }
+    }
+}
+
+/**
+ * Was die App über den Transport DIESER Anlage schon weiß.
+ *
+ * DER ANLASS (Sicherheitsdurchsicht, 06.09.2026). Der Rückfall von TLS
+ * auf UDP hing an einer reinen Zeitschranke: acht Sekunden ohne
+ * Registrierung, dann offen. Diese Bedingung stellt jeder her, der im
+ * selben WLAN sitzt und Pakete nach 5061 verwirft – und dann liest er
+ * nicht nur mit, WER wen anruft: Der Medienschutz ist SDES, der
+ * Medienschlüssel steht also im `a=crypto:` des SDP. Über offenes UDP
+ * holt er ihn sich und entschlüsselt das Gespräch.
+ *
+ * WARUM DER RÜCKFALL TROTZDEM BLEIBT: Eine Anlage ohne
+ * `[transport-tls]` in ihrer pjsip.conf nimmt kein TLS an. Ohne
+ * Rückfall käme dort gar keine Anmeldung zustande – und ein nicht
+ * angemeldetes Telefon wählt auch keine 112. Eine Härtung, die einen
+ * laufenden Kunden aussperrt, ist keine.
+ *
+ * DER AUSWEG ist dieses Gedächtnis: Wo TLS noch NIE ging, fällt die App
+ * zurück wie bisher; niemand merkt eine Änderung. Wo es schon einmal
+ * ging, ist ein Fehlschlag verdächtig – dort entscheidet der MENSCH.
+ *
+ * WARUM SharedPreferences UND NICHT DER VERSCHLÜSSELTE SPEICHER: Hier
+ * steht kein Geheimnis, sondern eine Tatsache über das Netz. Wer diese
+ * Datei schreiben kann, steht ohnehin schon auf dem entsperrten Gerät.
+ * Der Angreifer, um den es geht, sitzt im WLAN und kommt an keins von
+ * beidem.
+ */
+object Transportgedaechtnis {
+    private const val ABLAGE = "transport"
+
+    private fun schluessel(domain: String) = "tls-ging-schon-" + domain.lowercase()
+
+    /** Hat sich die App bei dieser Anlage schon einmal über TLS angemeldet? */
+    fun tlsGingSchon(context: Context, domain: String): Boolean =
+        context.getSharedPreferences(ABLAGE, Context.MODE_PRIVATE)
+            .getBoolean(schluessel(domain), false)
+
+    /** Es hat geklappt – ab jetzt ist ein Fehlschlag verdächtig. */
+    fun merke(context: Context, domain: String) {
+        context.getSharedPreferences(ABLAGE, Context.MODE_PRIVATE)
+            .edit().putBoolean(schluessel(domain), true).apply()
     }
 }

@@ -87,13 +87,70 @@ class GespraechsActivity : AppCompatActivity() {
      * App.
      */
     private fun zeigeFingerabdruck() {
+        /* DER ANGEZEIGTE WERT WIRD GERECHNET, NICHT GEGLAUBT.
+
+           Bis zum 06.09.2026 stand hier `it.fingerabdruck` – ein Feld
+           aus der Antwort der Anlage –, während mit `it.schluessel`
+           verschlüsselt wurde. Zwei Felder derselben Antwort, die
+           nichts aneinander bindet: Wer die Anlage übernimmt, tauscht
+           den Schlüssel, lässt den Fingerabdruck stehen, und die beiden
+           lesen sich am Telefon dasselbe Wort vor, während er mitliest.
+           Auch `gewechselt` kam von der Anlage – und ein NEUES Gerät ist
+           per Definition nicht „gewechselt". Seitdem rechnet die App den
+           Fingerabdruck aus GENAU DEM Schlüssel, mit dem sie gleich
+           verschließt, und der Zustand kommt aus dem eigenen Gedächtnis. */
         val geraete = Verzeichnis.kollegen.firstOrNull { it.id == wer }?.geraete ?: emptyList()
+        val unbestaetigt = geraete.firstOrNull {
+            Schluesselgedaechtnis.zustand(this, wer, it.id, it.schluessel) !=
+                Schluesselzustand.BEKANNT
+        }
         supportActionBar?.subtitle = when {
             geraete.isEmpty() -> null
-            geraete.any { it.gewechselt } ->
-                getString(R.string.chat_schluessel_gewechselt, geraete.first { it.gewechselt }.fingerabdruck)
-            else -> getString(R.string.chat_fingerabdruck, geraete.joinToString(", ") { it.fingerabdruck })
+            unbestaetigt != null -> {
+                val abdruck = Ende2Ende.fingerabdruck(unbestaetigt.schluessel)
+                val neuesGeraet = Schluesselgedaechtnis.zustand(
+                    this, wer, unbestaetigt.id, unbestaetigt.schluessel
+                ) == Schluesselzustand.NEU
+                getString(
+                    if (neuesGeraet) R.string.chat_geraet_neu
+                    else R.string.chat_schluessel_gewechselt,
+                    abdruck
+                )
+            }
+            else -> getString(
+                R.string.chat_fingerabdruck,
+                geraete.joinToString(", ") { Ende2Ende.fingerabdruck(it.schluessel) }
+            )
         }
+        /* BESTÄTIGT WIRD VON HAND – ein Tippen auf die Leiste. Würde
+           die App das selbst tun, sobald sie den Schlüssel einmal
+           gesehen hat, wäre das Gedächtnis eine Verzierung: Der
+           Angreifer wäre nach einer Sekunde wieder unauffällig. */
+        binding.gespraechLeiste.setOnClickListener {
+            if (unbestaetigt != null) bestaetigeSchluessel()
+        }
+    }
+
+    /**
+     * „Der Fingerabdruck stimmt" – gedrückt vom Menschen.
+     *
+     * Erst danach gilt der Schlüssel als gesehen. Die Anlage bekommt es
+     * auch gesagt, damit sie ihr eigenes Kennzeichen abräumt; maßgeblich
+     * ist aber das Gedächtnis hier.
+     */
+    fun bestaetigeSchluessel() {
+        val geraete = Verzeichnis.kollegen.firstOrNull { it.id == wer }?.geraete ?: emptyList()
+        for (g in geraete) Schluesselgedaechtnis.merke(this, wer, g.id, g.schluessel)
+        /* DER ANLAGE SAGEN WIR ES AUCH – aber auf einem eigenen Faden.
+           `Dienst.bestaetigeWechsel` geht ins Netz, und ein Netzaufruf
+           auf dem Hauptfaden ist unter Android eine
+           NetworkOnMainThreadException. Massgeblich ist ohnehin das
+           Gedaechtnis oben; die Anlage raeumt damit nur ihr eigenes
+           Kennzeichen ab. */
+        val app = applicationContext
+        val kennungen = geraete.map { it.id }
+        Thread { for (id in kennungen) Dienst.bestaetigeWechsel(app, id) }.start()
+        zeigeFingerabdruck()
     }
 
     private fun zeichneNeu() {

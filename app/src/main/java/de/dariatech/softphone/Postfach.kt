@@ -223,6 +223,7 @@ object Postfach {
            könnte der Nächste am selben Gerät die Post des Vorigen
            öffnen, sobald sie nachgeladen wird. */
         Ende2Ende.vergiss(context)
+        Schluesselgedaechtnis.vergiss(context)
     }
 
     private fun sichere(context: Context) {
