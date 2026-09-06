@@ -662,6 +662,12 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             override fun run() {
                 val s = LinphoneManager.currentCallDuration()
                 binding.callDuration.text = "%d:%02d".format(s / 60, s % 60)
+                /* MIT DER UHR, nicht einmal beim Verbinden: Das
+                   Sicherheitswort steht erst fest, wenn ZRTP durch ist
+                   – und das kann ein paar Sekunden nach dem ersten Ton
+                   sein. Einmal beim Verbinden gesetzt bliebe das Feld
+                   dann für immer leer. */
+                zeigeGespraechsKrypto()
                 handler.postDelayed(this, 1000)
             }
         }
@@ -673,6 +679,44 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         durationTimer?.let { handler.removeCallbacks(it) }
         durationTimer = null
         binding.callDuration.text = ""
+        /* DAS KENNZEICHEN GEHÖRT ZUM GESPRÄCH. Bliebe es stehen, stünde
+           beim nächsten Anruf das Sicherheitswort von vorgestern da –
+           und jemand läse es vor. */
+        binding.gespraechKrypto.text = ""
+        binding.gespraechKrypto.setOnClickListener(null)
+    }
+
+    /**
+     * Woran man IN DIESEM Gespräch ist – drei Zustände, drei Texte.
+     *
+     * Ein Sicherheitswort gibt es nur, wenn die Schlüssel im
+     * Medienstrom ausgehandelt wurden (ZRTP) – also dort, wo die Anlage
+     * nach ihrem Rückzug nicht mehr ist. Steht auf beiden Bildschirmen
+     * dasselbe Wort, ist niemand dazwischen.
+     *
+     * Kein Wort heißt NICHT „unverschlüsselt", sondern „verschlüsselt
+     * bis zur Anlage". Der Unterschied gehört auf den Bildschirm.
+     */
+    private fun zeigeGespraechsKrypto() {
+        val wort = LinphoneManager.sicherheitswort()
+        if (wort != null) {
+            val bestaetigt = LinphoneManager.sicherheitswortBestaetigt()
+            binding.gespraechKrypto.text = getString(
+                if (bestaetigt) R.string.gespraech_e2e_ok else R.string.gespraech_e2e, wort
+            )
+            binding.gespraechKrypto.setOnClickListener {
+                if (!LinphoneManager.sicherheitswortBestaetigt()) {
+                    LinphoneManager.bestaetigeSicherheitswort()
+                    zeigeGespraechsKrypto()
+                }
+            }
+            return
+        }
+        binding.gespraechKrypto.setOnClickListener(null)
+        binding.gespraechKrypto.setText(
+            if (LinphoneManager.gespraechVerschluesselt()) R.string.gespraech_bis_anlage
+            else R.string.gespraech_offen
+        )
     }
 
     // ---------- Ereignisse aus dem SIP-Stack ----------

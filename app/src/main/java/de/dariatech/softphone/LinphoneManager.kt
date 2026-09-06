@@ -247,7 +247,85 @@ object LinphoneManager {
         val address = core.interpretUrl(number, true) ?: return
         val params = core.createCallParams(null) ?: return
         params.isVideoEnabled = mitVideo
+        /* ZRTP NUR NACH INNEN, und gesetzt wird es AM ANRUF.
+
+           Am Kern gesetzt gälte es auch nach draußen – und dort kann es
+           niemand: Der Anbieter spricht kein ZRTP, das Gespräch käme
+           entweder unverschlüsselt oder gar nicht zustande. Punkt 20
+           des Masterplans sagt dasselbe von der anderen Seite: nach
+           draußen und beim Notruf geht es über die Anlage.
+
+           Wirksam wird es erst, wenn die Anlage sich aus dem Sprachweg
+           zurückzieht (Schalter „Sicheres Direktgespräch"). Tut sie es
+           nicht, läuft ZRTP zwischen App und Anlage – dann gilt das
+           Sicherheitswort nur bis dorthin. */
+        params.mediaEncryption =
+            if (istKollege(number)) MediaEncryption.ZRTP else MediaEncryption.SRTP
         core.inviteAddressWithParams(address, params)
+    }
+
+    /**
+     * Ist diese Nummer eine Nebenstelle DIESES Hauses?
+     *
+     * Nur dort ergibt ZRTP einen Sinn: Es braucht eine Gegenstelle, die
+     * es auch spricht, und einen Medienweg, aus dem die Anlage sich
+     * zurückziehen kann.
+     *
+     * Erkannt wird es an der Kollegenliste. Eine Längenregel („alles
+     * unter fünf Stellen ist intern") wäre geraten; Häuser mit
+     * fünfstelligen Durchwahlen gibt es.
+     */
+    fun istKollege(nummer: String): Boolean {
+        val z = nummer.filter { it.isDigit() }
+        if (z.isEmpty()) return false
+        return Verzeichnis.kollegen.any { k -> k.nebenstellen.contains(z) || k.durchwahl == z }
+    }
+
+    /**
+     * Das Sicherheitswort dieses Gesprächs – oder `null`.
+     *
+     * Steht es da, ist die Sprache ENDE ZU ENDE verschlüsselt: Die
+     * Schlüssel wurden im Medienstrom ausgehandelt (ZRTP), also dort,
+     * wo die Anlage nach ihrem Rückzug nicht mehr ist. Wer dazwischen
+     * säße, müsste zwei verschiedene Schlüssel aushandeln – und dann
+     * stünden auf den beiden Bildschirmen zwei verschiedene Wörter.
+     *
+     * `null` heißt NICHT „unverschlüsselt", sondern „verschlüsselt bis
+     * zur Anlage" (SRTP, Stufe 2).
+     */
+    fun sicherheitswort(): String? {
+        val wort = core.currentCall?.authenticationToken ?: return null
+        return wort.ifEmpty { null }
+    }
+
+    /**
+     * Ist DIESES Gespräch überhaupt verschlüsselt?
+     *
+     * Gelesen wird, was für den laufenden Anruf gilt – nicht, was die
+     * App gern hätte: Die Gegenstelle kann eine alte Nebenstelle ohne
+     * SRTP sein, und dann geht die Sprache offen durchs Netz, auch wenn
+     * die eigene Seite alles richtig macht.
+     */
+    fun gespraechVerschluesselt(): Boolean {
+        val art = core.currentCall?.currentParams?.mediaEncryption ?: return false
+        return art != MediaEncryption.None
+    }
+
+    /** Hat der Mensch das Wort schon mit der Gegenseite verglichen? */
+    fun sicherheitswortBestaetigt(): Boolean =
+        core.currentCall?.authenticationTokenVerified == true
+
+    /**
+     * Das Sicherheitswort mit der Gegenseite verglichen – und es
+     * stimmt.
+     *
+     * Liblinphone merkt sich das über das Gespräch hinaus: Beim
+     * nächsten Anruf mit demselben Gegenüber fragt es nicht wieder.
+     * Ändert sich der Schlüssel doch, meldet es sich von selbst – und
+     * genau das ist der Fall, den man sehen will.
+     */
+    fun bestaetigeSicherheitswort() {
+        core.currentCall?.authenticationTokenVerified = true
     }
 
     /**

@@ -38,6 +38,13 @@
          Signalisierung – wer wen anruft, wann – verschluesselt nur TLS. -->
     <!-- Der Fingerabdruck des Gegenübers. Zum VORLESEN – er ist der
          einzige Weg, aus dem Verschlüsseln eine Gewissheit zu machen. -->
+    <!-- Die drei Zustände des Gesprächs. Drei Texte, weil es drei
+         Zustände sind – ein Schloss, das immer gleich aussieht, wäre
+         eine Lüge. %1$s ist das Sicherheitswort. -->
+    <string name="gespraech_e2e">Ende-zu-Ende verschlüsselt · %1$s – vorlesen und bestätigen</string>
+    <string name="gespraech_e2e_ok">Ende-zu-Ende verschlüsselt · %1$s ✓</string>
+    <string name="gespraech_bis_anlage">Verschlüsselt bis zur Anlage</string>
+    <string name="gespraech_offen">Unverschlüsselt</string>
     <string name="chat_fingerabdruck">Verschlüsselt · %1$s</string>
     <string name="chat_schluessel_gewechselt">Neuer Schlüssel: %1$s – bitte vorlesen lassen</string>
     <string name="verschluesselung_zu">Verschlüsselt: Sprache (SRTP) und Signalisierung (TLS)</string>

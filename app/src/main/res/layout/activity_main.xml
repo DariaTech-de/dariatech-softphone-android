@@ -465,6 +465,25 @@
             android:textColor="?attr/colorSurface"
             android:textSize="17sp" />
 
+        <!-- WORAN MAN IST – und zwar ehrlich (Punkt 19 des
+             Masterplans). Drei Zustaende, drei Texte: Ende-zu-Ende mit
+             Sicherheitswort zum Vorlesen, verschluesselt bis zur
+             Anlage, oder offen. Ein Schloss, das immer gleich aussieht,
+             ist eine Luege.
+
+             Anklickbar, weil das Bestaetigen des Wortes ein Tippen
+             ist – gelesen wird es vom Menschen, nicht von der App. -->
+        <TextView
+            android:id="@+id/gespraechKrypto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:textColor="?attr/colorOutline"
+            android:textSize="13sp" />
+
         <Space
             android:layout_width="1dp"
             android:layout_height="0dp"
