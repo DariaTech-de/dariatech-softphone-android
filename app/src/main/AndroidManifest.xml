@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- DER ANRUF GEHÖRT DEM SYSTEM (Etappe 1, docs/AUFTRAG-AUTO.md).
+         Ohne MANAGE_OWN_CALLS nimmt Telecom keinen selbstverwalteten
+         Anruf entgegen – und damit ist die App im Auto unsichtbar.
+         Die Berechtigung ist nicht gefährlich und wird nicht erfragt. -->
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Video: Die Kamera wird NUR gebraucht, wenn jemand im Gespräch auf

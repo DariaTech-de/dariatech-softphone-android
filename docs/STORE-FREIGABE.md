@@ -52,6 +52,7 @@ kein Analysewerkzeug und keine Werbung in dieser App.
 | `FOREGROUND_SERVICE` | Die Registrierung im Hintergrund halten. |
 | `FOREGROUND_SERVICE_PHONE_CALL` | Typ des Dienstes – seit Android 14 Pflicht. |
 | `FOREGROUND_SERVICE_MICROPHONE` | Der Dienst trägt auch den Ton des Gesprächs. |
+| `MANAGE_OWN_CALLS` | Die App meldet ihre Anrufe beim System an (Telecom, selbstverwaltet). Erst dadurch erscheint ein Anruf in **Android Auto**, an der Freisprecheinrichtung und auf dem Sperrbildschirm, und erst dadurch weiß ein hereinkommender GSM-Anruf, dass hier schon telefoniert wird. **Nicht gefährlich**, wird nicht erfragt, gibt keinen Zugriff auf die Anrufliste oder den Wähler des Telefons: Selbstverwaltete Anrufe bleiben von der Telefon-App getrennt. Siehe [`AUFTRAG-AUTO.md`](AUFTRAG-AUTO.md), Etappe 1. |
 
 **Was NICHT gefragt wird und auch nicht gefragt werden soll:**
 Standort, Kontakte des Telefons, Speicher, `READ_PHONE_STATE`,

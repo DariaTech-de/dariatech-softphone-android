@@ -119,13 +119,28 @@ object LinphoneManager {
                 trackNumber = call.remoteAddress.username ?: call.remoteAddress.asStringUriOnly()
                 trackIncoming = true
                 trackConnected = false
+                /* DEM SYSTEM MELDEN – hier und nicht in der Activity.
+                   Etappe 1 aus docs/AUFTRAG-AUTO.md: Erst dadurch
+                   erscheint der Anruf im Auto, an der
+                   Freisprecheinrichtung und auf dem Sperrbildschirm,
+                   und erst dadurch weiss ein hereinkommender
+                   GSM-Anruf, dass hier schon telefoniert wird. */
+                appContext?.let {
+                    Autoanruf.kommtAn(it, trackNumber, Verzeichnis.wer(trackNumber)?.first ?: trackNumber)
+                }
             }
             Call.State.OutgoingInit -> {
                 trackNumber = call.remoteAddress.username ?: call.remoteAddress.asStringUriOnly()
                 trackIncoming = false
                 trackConnected = false
+                appContext?.let {
+                    Autoanruf.gehtRaus(it, trackNumber, Verzeichnis.wer(trackNumber)?.first ?: trackNumber)
+                }
             }
-            Call.State.Connected, Call.State.StreamsRunning -> trackConnected = true
+            Call.State.Connected, Call.State.StreamsRunning -> {
+                trackConnected = true
+                Autoanruf.verbunden()
+            }
             Call.State.End, Call.State.Error -> {
                 if (trackNumber.isNotEmpty()) {
                     val direction = when {
@@ -141,6 +156,10 @@ object LinphoneManager {
                     }
                     trackNumber = ""
                 }
+                /* AUFRÄUMEN, IMMER. Ohne diese Zeile bleibt im Auto und
+                   auf dem Sperrbildschirm ein Anruf stehen, den es nicht
+                   mehr gibt. */
+                Autoanruf.beendet()
             }
             else -> Unit
         }
@@ -448,6 +467,29 @@ object LinphoneManager {
     fun videoFlaechen(fremd: TextureView?, eigen: TextureView?) {
         core.nativeVideoWindowId = fremd
         core.nativePreviewWindowId = eigen
+    }
+
+    /**
+     * Annehmen – aber der Befehl kam vom SYSTEM, nicht aus unserer App.
+     *
+     * Lenkradtaste, Sperrbildschirm, Android Auto und die
+     * Freisprecheinrichtung kommen alle über Telecom hier an. Getrennt
+     * von [answer], weil hier NICHT zurückgemeldet werden darf: Das
+     * System weiß es schon, sonst hätte es nicht gefragt – eine
+     * Rückmeldung ergäbe eine Schleife.
+     */
+    fun annehmenVomSystem() {
+        answer()
+    }
+
+    /** Halten/Fortsetzen auf Geheiss des Systems (Auto, Bluetooth). */
+    fun setzeGehalten(gehalten: Boolean) {
+        val call = core.currentCall ?: core.calls.firstOrNull() ?: return
+        if (gehalten) {
+            if (call.state != Call.State.Paused) call.pause()
+        } else {
+            if (call.state == Call.State.Paused) call.resume()
+        }
     }
 
     fun hangup() {

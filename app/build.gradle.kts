@@ -35,6 +35,14 @@ android {
 }
 
 dependencies {
+    /* TELECOM: Der Anruf gehört dem SYSTEM (Etappe 1, docs/AUFTRAG-AUTO.md).
+       Ohne diese Bibliothek ist die App in Android Auto und an jeder
+       Freisprecheinrichtung unsichtbar – die Lenkradtaste nimmt nichts
+       an, weil das System von unseren Anrufen nichts weiß. Google
+       verlangt sie ausserdem als Voraussetzung für die Telefonie-
+       Kategorie in Android Auto. */
+    implementation("androidx.core:core-telecom:1.0.0")
+
     implementation("org.linphone:linphone-sdk-android:5.4.47")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
