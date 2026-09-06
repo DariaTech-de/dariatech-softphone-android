@@ -60,7 +60,12 @@ object Postfach {
         if (geladen) return
         geladen = true
         alle = try {
-            val roh = datei(context).takeIf { it.exists() }?.readText() ?: return
+            /* DURCH DEN TRESOR. Bis zum 06.09.2026 lag der Verlauf hier
+               als gewoehnliche JSON-Datei in filesDir – lesbar fuer
+               jeden, der das Geraet gerootet hat oder eine Sicherung
+               ausliest. Auf einem Diensthandy, das weitergegeben wird,
+               ist das der wahrscheinlichste Fall. */
+            val roh = Tresor.lies(context, datei(context))?.toString(Charsets.UTF_8) ?: return
             val liste = JSONArray(roh)
             (0 until liste.length()).map { Nachricht.aus(liste.getJSONObject(it)) }
         } catch (e: Exception) {
@@ -166,7 +171,7 @@ object Postfach {
                         .put("text", n.text).put("zeit", n.zeit)
                 )
             }
-            datei(context).writeText(liste.toString())
+            Tresor.schreibe(context, datei(context), liste.toString().toByteArray())
         } catch (e: Exception) {
             /* EIN FEHLGESCHLAGENES SICHERN DARF DEN CHAT NICHT ANHALTEN.
                Die Nachrichten liegen auf der Anlage; hier geht nur der

@@ -153,7 +153,15 @@ object Verzeichnis {
 
     // ---- Bilder ----
 
-    private fun ordner(context: Context) = File(context.cacheDir, "gesichter")
+    /* IN filesDir, NICHT IN cacheDir.
+    
+       Zwei Gruende: Was im Zwischenspeicher liegt, raeumt Android bei
+       Platzmangel weg – ein Gesicht waere dann beim naechsten Anruf
+       wieder eine nackte Nummer. Und der Zwischenspeicher ist der
+       Ordner, den jedes Sicherungswerkzeug als erstes mitnimmt. Seit
+       dem 06.09.2026 liegen die Bilder ausserdem verschluesselt
+       (Tresor, Stufe 1c des Masterplans). */
+    private fun ordner(context: Context) = File(context.filesDir, "gesichter")
 
     /** Das Bild eines Menschen, falls schon geladen. */
     fun bild(benutzerId: String?): Bitmap? {
@@ -167,15 +175,20 @@ object Verzeichnis {
            ändert sich das Bild, ändert sich der Name, und der alte
            Eintrag wird nie wieder gefunden. */
         if (ziel.exists()) {
-            BitmapFactory.decodeFile(ziel.absolutePath)?.let {
-                synchronized(bilder) { bilder[k.id] = it }
+            /* DURCH DEN TRESOR gelesen – ein Portraet ist ein
+               personenbezogenes Datum und lag bis dahin als
+               gewoehnliches JPEG auf der Platte. */
+            Tresor.lies(context, ziel)?.let { roh ->
+                BitmapFactory.decodeByteArray(roh, 0, roh.size)?.let {
+                    synchronized(bilder) { bilder[k.id] = it }
+                }
             }
             return
         }
         val daten = Dienst.foto(context, k.id) ?: return
         val bild = BitmapFactory.decodeByteArray(daten, 0, daten.size) ?: return
         ordner(context).mkdirs()
-        ziel.writeBytes(daten)
+        Tresor.schreibe(context, ziel, daten)
         synchronized(bilder) { bilder[k.id] = bild }
     }
 
