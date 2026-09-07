@@ -197,6 +197,73 @@ object Dienst {
         }
     }
 
+    /**
+     * Was die Anlage von DIESEM Gerät sieht (GET /geraet, CLIENT-API.md).
+     *
+     * DER VORFALL (iOS, 07.09.2026): Die App zeigte „Verbunden", das
+     * Portal „abgemeldet", Asterisk hatte keinen Contact. Drei Stunden
+     * lang die Frage, wer lügt. Seitdem fragt die App die Anlage selbst
+     * – und „Verbunden" gilt nur, wenn die Anlage es bestätigt.
+     *
+     * `null` heißt: keine Antwort (kein Netz, ältere Anlage ohne diesen
+     * Weg). Das ist KEIN Widerspruch zur eigenen Anzeige, nur keine
+     * Bestätigung.
+     */
+    fun geraet(context: Context): Geraetesicht? {
+        val (status, roh) = sendeMitStatus("/geraet", "GET", null, null, token(context))
+        if (status != 200 || roh == null) return null
+        return try {
+            Geraetesicht.aus(JSONObject(String(roh)))
+        } catch (e: Exception) {
+            Log.w(TAG, "Sicht der Anlage unlesbar: ${e.message}")
+            null
+        }
+    }
+
+    /** Der Dienststand des Menschen hinter diesem Apparat (GET /dienst). */
+    fun dienst(context: Context): Dienstantwort =
+        dienstAntwort(sendeMitStatus("/dienst", "GET", null, null, token(context)))
+
+    /**
+     * An- oder abmelden an den Warteschleifen (POST /dienst).
+     *
+     * ÜBER DIE ANLAGE, NICHT ÜBER *45. Der Tastencode ändert den Stand
+     * in Asterisk, aber die App erfährt nie, ob es geklappt hat – und
+     * am 07.09.2026 hatte der Apparat gar keinen Benutzer, sodass *45
+     * eine Ansage spielte und nichts änderte. Über den Dienst kommt die
+     * Antwort zurück: der neue Stand, oder mit 409 die Begründung der
+     * Anlage im Klartext.
+     */
+    fun setzeDienst(context: Context, ausser: Boolean): Dienstantwort =
+        dienstAntwort(
+            sendeMitStatus(
+                "/dienst", "POST",
+                JSONObject().put("ausserDienst", ausser).toString().toByteArray(),
+                "application/json", token(context)
+            )
+        )
+
+    private fun dienstAntwort(antwort: Pair<Int, ByteArray?>): Dienstantwort {
+        val (status, roh) = antwort
+        if (status == 0) return Dienstantwort(null, "Die Anlage hat nicht geantwortet.")
+        val text = roh?.let { String(it) } ?: ""
+        if (status == 200) {
+            return try {
+                Dienstantwort(Dienststand.aus(JSONObject(text)), null)
+            } catch (e: Exception) {
+                Dienstantwort(null, "Antwort der Anlage unlesbar.")
+            }
+        }
+        val grund = try { JSONObject(text).optString("error") } catch (e: Exception) { "" }
+        // 409: Kein Benutzer zu diesem Apparat – eine Auskunft im
+        // Klartext, kein Fehler. Genau die Information, die am
+        // 07.09.2026 drei Stunden gefehlt hat.
+        if (status == 409) {
+            return Dienstantwort(null, grund.ifEmpty { "Diesem Apparat ist kein Benutzer zugeordnet." })
+        }
+        return Dienstantwort(null, grund.ifEmpty { "Die Anlage hat abgelehnt ($status)." })
+    }
+
     /** Das Bild eines Menschen – roh, wie es kommt. */
     fun foto(context: Context, benutzerId: String): ByteArray? =
         sende("/foto/$benutzerId", "GET", null, null, token(context))
@@ -223,7 +290,26 @@ object Dienst {
         typ: String?,
         token: String?
     ): ByteArray? {
-        if (token != null && token.isEmpty()) return null
+        val (status, roh) = sendeMitStatus(weg, methode, koerper, typ, token)
+        return if (status in 200..299) roh else null
+    }
+
+    /**
+     * Dieselbe Anfrage, aber mit Statuscode und Rumpf AUCH im Fehlerfall.
+     *
+     * Für /dienst reicht „hat nicht geklappt" nicht: Die Anlage sagt
+     * mit 409 im Klartext, WARUM (kein Benutzer zugeordnet), und diesen
+     * Satz soll der Mensch lesen, nicht eine Zeile im Protokoll.
+     * Status 0 heißt: gar keine Antwort.
+     */
+    private fun sendeMitStatus(
+        weg: String,
+        methode: String,
+        koerper: ByteArray?,
+        typ: String?,
+        token: String?
+    ): Pair<Int, ByteArray?> {
+        if (token != null && token.isEmpty()) return Pair(0, null)
         var verbindung: HttpURLConnection? = null
         return try {
             verbindung = (URL(Anlage.DIENST + weg).openConnection() as HttpURLConnection).apply {
@@ -237,16 +323,18 @@ object Dienst {
                     outputStream.use { it.write(koerper) }
                 }
             }
-            if (verbindung.responseCode !in 200..299) {
-                Log.w(TAG, "$weg antwortet mit ${verbindung.responseCode}")
-                return null
+            val status = verbindung.responseCode
+            if (status !in 200..299) {
+                Log.w(TAG, "$weg antwortet mit $status")
+                val fehlerRumpf = try { verbindung.errorStream?.use { it.readBytes() } } catch (e: Exception) { null }
+                return Pair(status, fehlerRumpf)
             }
-            verbindung.inputStream.use { it.readBytes() }
+            Pair(status, verbindung.inputStream.use { it.readBytes() })
         } catch (e: Exception) {
             /* KEIN ABSTURZ, NUR EINE ZEILE IM PROTOKOLL. Ohne Netz soll
                die App telefonieren; Kontakte und Bilder sind Beiwerk. */
             Log.w(TAG, "$weg nicht erreichbar: ${e.message}")
-            null
+            Pair(0, null)
         } finally {
             verbindung?.disconnect()
         }
@@ -390,3 +478,67 @@ data class Kontakt(
         }
     }
 }
+
+/**
+ * Was die Anlage von diesem Gerät sieht (GET /geraet).
+ *
+ * ALLE FELDER DÜRFEN FEHLEN. `angemeldet == null` heißt: Asterisk war
+ * gerade nicht befragbar – das ist keine Aussage über das Gerät.
+ * Dieselbe Klasse wie `Geraetesicht` in der iOS-App, damit beide Apps
+ * dieselben Sätze sagen.
+ */
+data class Geraetesicht(
+    val angemeldet: Boolean?,
+    val erreichbar: Boolean?,
+    val transport: String,
+    val laufzeitMs: Double?,
+    val benutzer: String,
+    val tls: Boolean?,
+    val srtp: Boolean?
+) {
+    /** Ein Satz für die Einstellungen – ohne Serveradresse, ohne Innenleben. */
+    val satz: String
+        get() {
+            val an = angemeldet ?: return "Anlage gerade nicht befragbar"
+            if (!an) return "nicht angemeldet – die Anlage sieht dieses Gerät nicht"
+            val weg = transport.uppercase()
+            val wegText = if (weg.isEmpty()) "" else " über $weg"
+            if (erreichbar == false) return "angemeldet$wegText, aber nicht erreichbar"
+            laufzeitMs?.let { return "angemeldet$wegText, ${Math.round(it)} ms" }
+            return "angemeldet$wegText"
+        }
+
+    /** Die Anlage hat das Gerät und kann es anrufen. */
+    val gesund: Boolean get() = angemeldet == true && erreichbar != false
+
+    companion object {
+        private fun JSONObject.dreiwertig(name: String): Boolean? =
+            if (has(name) && !isNull(name)) optBoolean(name) else null
+
+        fun aus(o: JSONObject) = Geraetesicht(
+            angemeldet = o.dreiwertig("angemeldet"),
+            erreichbar = o.dreiwertig("erreichbar"),
+            transport = o.optString("transport"),
+            laufzeitMs = if (o.has("laufzeitMs") && !o.isNull("laufzeitMs")) o.optDouble("laufzeitMs") else null,
+            benutzer = o.optString("benutzer"),
+            tls = o.dreiwertig("tls"),
+            srtp = o.dreiwertig("srtp")
+        )
+    }
+}
+
+/** Der Dienststand des Menschen (GET/POST /dienst). */
+data class Dienststand(val benutzer: String, val ausserDienst: Boolean) {
+    companion object {
+        fun aus(o: JSONObject) = Dienststand(
+            benutzer = o.optString("benutzer"),
+            ausserDienst = o.optBoolean("ausserDienst", false)
+        )
+    }
+}
+
+/**
+ * Die Antwort auf eine Dienst-Anfrage: entweder der Stand oder die
+ * Begründung der Anlage im Klartext – nie beides, nie keines.
+ */
+data class Dienstantwort(val stand: Dienststand?, val fehler: String?)

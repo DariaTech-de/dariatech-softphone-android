@@ -45,6 +45,42 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     private val meldeRecht =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    /**
+     * Die Sicht der ANLAGE auf dieses Gerät – und der Dienststand des
+     * Menschen dahinter. Beides alle 30 Sekunden nachgeladen, solange
+     * der Bildschirm offen ist (siehe [onResume]).
+     *
+     * DER VORFALL (iOS, 07.09.2026): Die App zeigte „Verbunden", das
+     * Portal „abgemeldet", Asterisk hatte keinen Contact. Seitdem gilt
+     * „Verbunden" nur, wenn die Anlage das Gerät auch sieht.
+     */
+    private var anlagensicht: Geraetesicht? = null
+    private var dienststand: Dienststand? = null
+    private var schalterStill = false
+    private val anlagensichtTakt = 30_000L
+    private val anlagensichtLauf = object : Runnable {
+        override fun run() {
+            ladeAnlagensicht()
+            handler.postDelayed(this, anlagensichtTakt)
+        }
+    }
+
+    /**
+     * Die Klingelton-Auswahl des Systems. Kommt ein Ton zurück, wandert
+     * er in den Kanal der Anrufmeldung – siehe Anrufmeldung.setzeKlingelton,
+     * warum das einen neuen Kanal braucht.
+     */
+    private val klingeltonWahl =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { ergebnis ->
+            if (ergebnis.resultCode != RESULT_OK) return@registerForActivityResult
+            @Suppress("DEPRECATION")
+            val ton = ergebnis.data?.getParcelableExtra<android.net.Uri>(
+                android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI
+            )
+            Anrufmeldung.setzeKlingelton(this, ton)
+            zeigeKlingelton()
+        }
+
     private val micPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -186,6 +222,29 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             AKTION_ABLEHNEN, AKTION_AUFLEGEN -> LinphoneManager.hangup()
             else -> Unit
         }
+    }
+
+    /**
+     * Zurück im Vordergrund: Anmeldung auffrischen und die Anlage fragen.
+     *
+     * Asterisk löscht einen Contact, dessen TLS-Verbindung im
+     * Hintergrund abgerissen ist – die App merkt davon nichts und zeigt
+     * weiter „Verbunden". Ein REGISTER beim Zurückkommen schließt die
+     * Lücke; die Nachfrage bei der Anlage macht sie sichtbar, falls
+     * nicht.
+     */
+    override fun onResume() {
+        super.onResume()
+        LinphoneManager.vordergrund()
+        handler.removeCallbacks(anlagensichtLauf)
+        handler.post(anlagensichtLauf)
+    }
+
+    override fun onPause() {
+        // Im Hintergrund nicht alle 30 Sekunden ins Netz – das kostet
+        // Akku und bringt niemandem etwas, der den Bildschirm nicht sieht.
+        handler.removeCallbacks(anlagensichtLauf)
+        super.onPause()
     }
 
     override fun onDestroy() {
@@ -530,6 +589,37 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             LinphoneManager.neuAnmelden()
             zeigeDienst(Dienstzustand.LAEUFT)
         }
+        zeigeAnlagensicht()
+        zeigeWarteschleife(null)
+        /* DER SCHALTER GEHT ÜBER DIE ANLAGE, NICHT ÜBER *45. Der
+           Tastencode spielt eine Ansage und ändert – wenn dem Apparat
+           kein Benutzer zugeordnet ist – gar nichts; das hat am
+           07.09.2026 niemand von einem „angemeldet" unterscheiden
+           können. Die Anlage antwortet mit dem neuen Stand oder mit
+           ihrer Begründung, und die steht dann unter dem Schalter. */
+        binding.warteschleifeSchalter.setOnCheckedChangeListener { _, angemeldet ->
+            if (schalterStill) return@setOnCheckedChangeListener
+            binding.warteschleifeSchalter.isEnabled = false
+            val app = applicationContext
+            Thread {
+                val antwort = Dienst.setzeDienst(app, ausser = !angemeldet)
+                runOnUiThread {
+                    binding.warteschleifeSchalter.isEnabled = true
+                    zeigeWarteschleife(antwort)
+                }
+            }.start()
+        }
+        zeigeKlingelton()
+        binding.klingeltonZeile.setOnClickListener {
+            val absicht = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_RINGTONE)
+                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, getString(R.string.klingelton_waehlen))
+                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Anrufmeldung.klingelton(this@MainActivity))
+            }
+            klingeltonWahl.launch(absicht)
+        }
         // Das Passwort kommt aus dem VERSCHLÜSSELTEN Speicher – siehe
         // Zugangsspeicher. Beim ersten Lesen zieht ein Altbestand aus der
         // Klartext-Ablage automatisch mit um.
@@ -790,6 +880,8 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 RegistrationState.Ok -> {
                     binding.status.text = getString(R.string.connected)
                     binding.statusDot.setBackgroundResource(R.drawable.dot_green)
+                    // …es sei denn, die Anlage widerspricht (siehe zeigeKopfzeile).
+                    zeigeKopfzeile()
                 }
                 RegistrationState.Progress -> binding.status.text = getString(R.string.connecting)
                 RegistrationState.Failed -> {
@@ -845,6 +937,91 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         } else {
             getString(R.string.nebenstelle_zeile, "$nebenstelle@${Anlage.SERVER}")
         }
+    }
+
+    // ---------- Die Sicht der Anlage ----------
+
+    /** GET /geraet und GET /dienst – im Hintergrundfaden, dann anzeigen. */
+    private fun ladeAnlagensicht() {
+        if (!Dienst.angemeldet(this)) return
+        val app = applicationContext
+        Thread {
+            val geraet = Dienst.geraet(app)
+            val dienst = Dienst.dienst(app)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                anlagensicht = geraet
+                zeigeAnlagensicht()
+                zeigeKopfzeile()
+                zeigeWarteschleife(dienst)
+            }
+        }.start()
+    }
+
+    private fun zeigeAnlagensicht() {
+        val sicht = anlagensicht
+        binding.anlageSichtZeile.text = getString(
+            R.string.anlage_sicht_zeile,
+            sicht?.satz ?: getString(R.string.anlage_sicht_unbekannt)
+        )
+    }
+
+    /**
+     * Die Kopfzeile sagt, was WIRKLICH gilt.
+     *
+     * Die eigene Registrierung ist die eine Hälfte; die andere ist, ob
+     * die Anlage das Gerät hat. Beides grün heißt „Verbunden". Sagt die
+     * Anlage „nicht angemeldet" oder „nicht erreichbar", steht das hier
+     * – rot –, auch wenn Liblinphone gerade ein 200 OK bekommen hat.
+     * Ohne Antwort der Anlage bleibt die eigene Sicht stehen: keine
+     * Bestätigung ist kein Widerspruch.
+     */
+    private fun zeigeKopfzeile() {
+        if (!LinphoneManager.istRegistriert()) return
+        val sicht = anlagensicht
+        when {
+            sicht?.angemeldet == false -> {
+                binding.status.text = getString(R.string.status_nicht_gesehen)
+                binding.statusDot.setBackgroundResource(R.drawable.dot_red)
+            }
+            sicht?.erreichbar == false -> {
+                binding.status.text = getString(R.string.status_nicht_erreichbar)
+                binding.statusDot.setBackgroundResource(R.drawable.dot_red)
+            }
+            else -> {
+                binding.status.text = getString(R.string.connected)
+                binding.statusDot.setBackgroundResource(R.drawable.dot_green)
+            }
+        }
+    }
+
+    /** Schalter und Begründung nach einer Antwort der Anlage (oder ohne). */
+    private fun zeigeWarteschleife(antwort: Dienstantwort?) {
+        if (antwort?.stand != null) dienststand = antwort.stand
+        val stand = dienststand
+        schalterStill = true
+        binding.warteschleifeSchalter.isChecked = stand != null && !stand.ausserDienst
+        schalterStill = false
+        binding.warteschleifeSchalter.isEnabled = Dienst.angemeldet(this)
+        val grund = when {
+            antwort?.fehler != null -> antwort.fehler
+            stand == null && Dienst.angemeldet(this) -> getString(R.string.warteschleife_unbekannt)
+            stand == null -> getString(R.string.warteschleife_ohne_ausweis)
+            else -> ""
+        }
+        binding.warteschleifeGrund.text = grund
+        binding.warteschleifeGrund.visibility = if (grund.isBlank()) View.GONE else View.VISIBLE
+    }
+
+    private fun zeigeKlingelton() {
+        val ton = Anrufmeldung.klingelton(this)
+        val name = if (ton == null) {
+            getString(R.string.klingelton_system)
+        } else {
+            android.media.RingtoneManager.getRingtone(this, ton)?.getTitle(this)
+                ?: getString(R.string.klingelton_system)
+        }
+        binding.klingeltonZeile.text = getString(R.string.klingelton_zeile, name)
     }
 
     override fun onCallState(call: Call, state: Call.State?, message: String) {

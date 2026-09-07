@@ -199,7 +199,8 @@ build.gradle.kts        Abhängigkeiten, SDK-Stände
 
 ## Offene Punkte
 
-1. Verlauf & Kontakte wie auf dem Desktop, Klingelton-Auswahl
+1. Verlauf & Kontakte wie auf dem Desktop (Klingelton-Auswahl seit
+   07.09.2026 erledigt – `Anrufmeldung.kanalAnruf`)
 2. CallStyle-Benachrichtigungen und Vollbild-Anrufannahme
 3. Release-Signierung und Verteilung über den Play Store
    (Google-Play-Konto nötig, 25 $ einmalig)

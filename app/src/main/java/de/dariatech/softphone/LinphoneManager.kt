@@ -195,8 +195,29 @@ object LinphoneManager {
     private var versuchMitTls = false
     private val uhr = Handler(Looper.getMainLooper())
 
-    /** Meldet das Konto an; vorhandene Konten werden ersetzt. */
+    /**
+     * Meldet das Konto an; vorhandene Konten werden ersetzt.
+     *
+     * DIESELBE ANMELDUNG NOCH EINMAL TUT NICHTS. Auf iOS stand am
+     * 07.09.2026 in der Konsole der Anlage: REGISTER → 200, gleich
+     * darauf REGISTER mit Expires: 0, dann wieder von vorn – bei jedem
+     * Erscheinen des Hauptbildschirms. Der Grund war `clearAccounts()`
+     * in [melde]: Es meldet das alte Konto AB, bevor es das neue
+     * anmeldet. Für einen Moment ist das Telefon nicht erreichbar, und
+     * wer in dieser Sekunde anruft, landet in der Mailbox. Hier rufen
+     * onCreate und der Speichern-Knopf `connect()`; wer nur speichert,
+     * ohne etwas geändert zu haben, soll dabei nicht abgemeldet werden.
+     */
     fun login(username: String, password: String, domain: String, transport: TransportType) {
+        val mitTls = transport == TransportType.Tls
+        val unveraendert = username == letzterBenutzer &&
+            password == letztesPasswort &&
+            domain == letzteDomain &&
+            mitTls == versuchMitTls
+        if (unveraendert && (istRegistriert() || istImGange())) {
+            android.util.Log.i("Anlage", "Anmeldung unverändert und steht – nichts zu tun.")
+            return
+        }
         letzterBenutzer = username
         letztesPasswort = password
         letzteDomain = domain
@@ -315,6 +336,27 @@ object LinphoneManager {
     fun neuAnmelden() {
         core.refreshRegisters()
     }
+
+    /**
+     * Die App ist zurück im Vordergrund.
+     *
+     * ASTERISK LÖSCHT EINEN CONTACT, DESSEN VERBINDUNG ABREISST
+     * („Removed contact … due to shutdown", Konsole der Anlage am
+     * 07.09.2026). Über TLS hängt die Anmeldung an einer TCP-Verbindung;
+     * legt Android die Verbindung im Hintergrund schlafen, ist das
+     * Telefon aus Sicht der Anlage weg – während die App weiter
+     * „Verbunden" zeigt. Ein Auffrischen beim Zurückkommen kostet ein
+     * REGISTER und schließt genau diese Lücke. Kein clearAccounts: Das
+     * würde erst abmelden (siehe [login]).
+     */
+    fun vordergrund() {
+        if (letzterBenutzer.isEmpty()) return
+        core.refreshRegisters()
+    }
+
+    /** Ob gerade eine Anmeldung LÄUFT – noch kein Ergebnis, aber unterwegs. */
+    private fun istImGange(): Boolean =
+        core.defaultAccount?.state == org.linphone.core.RegistrationState.Progress
 
     /** Ob gerade ein Konto angemeldet ist – für die Einstellungen. */
     fun istRegistriert(): Boolean =

@@ -42,6 +42,53 @@ object Anrufmeldung {
     private const val KANAL_LAUFEND = "laufend"
     const val MELDUNG_ID = 4711
 
+    private const val ABLAGE = "klingelton"
+    private const val SCHLUESSEL_TON = "uri"
+    private const val SCHLUESSEL_FASSUNG = "fassung"
+
+    /**
+     * Die Kennung des Anrufkanals – MIT ZÄHLER.
+     *
+     * Ein Kanal ist nach dem Anlegen unveränderlich, auch sein Ton
+     * (Android-Regel seit 8.0). Wer den Klingelton nur per `setSound`
+     * auf den bestehenden Kanal setzt, sieht keinen Fehler, und es
+     * klingelt wie vorher. Ein Wechsel braucht deshalb einen NEUEN Kanal
+     * mit neuer Kennung; der alte wird gelöscht. Fassung 0 heißt „anruf"
+     * – der Kanal, den die App seit dem 30.08.2026 anlegt; Bestand bleibt
+     * Bestand.
+     */
+    fun kanalAnruf(context: Context): String {
+        val fassung = context.getSharedPreferences(ABLAGE, Context.MODE_PRIVATE)
+            .getInt(SCHLUESSEL_FASSUNG, 0)
+        return if (fassung == 0) KANAL_ANRUF else "$KANAL_ANRUF-$fassung"
+    }
+
+    /** Der gewählte Klingelton – `null` heißt: der des Systems. */
+    fun klingelton(context: Context): android.net.Uri? =
+        context.getSharedPreferences(ABLAGE, Context.MODE_PRIVATE)
+            .getString(SCHLUESSEL_TON, null)?.let { android.net.Uri.parse(it) }
+
+    /**
+     * Einen neuen Klingelton setzen. `null` heißt: zurück zum Systemton.
+     *
+     * Der alte Kanal wird gelöscht und ein neuer angelegt – siehe
+     * [kanalAnruf]. Das Löschen passiert VOR dem Anlegen, damit in den
+     * Android-Einstellungen nicht zwei Kanäle „Eingehende Anrufe" stehen.
+     */
+    fun setzeKlingelton(context: Context, ton: android.net.Uri?) {
+        val ablage = context.getSharedPreferences(ABLAGE, Context.MODE_PRIVATE)
+        val alt = kanalAnruf(context)
+        ablage.edit()
+            .putString(SCHLUESSEL_TON, ton?.toString())
+            .putInt(SCHLUESSEL_FASSUNG, ablage.getInt(SCHLUESSEL_FASSUNG, 0) + 1)
+            .apply()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.getSystemService(NotificationManager::class.java)
+                ?.deleteNotificationChannel(alt)
+        }
+        kanaeleAnlegen(context)
+    }
+
     /**
      * Die Kanäle anlegen. Zweimal denselben anzulegen ist harmlos –
      * Android ersetzt nichts, was schon da ist, und genau darauf ist
@@ -55,13 +102,26 @@ object Anrufmeldung {
         // damit darf die Meldung überhaupt oben einblenden und den
         // Vollbild-Versuch stellen.
         val anruf = NotificationChannel(
-            KANAL_ANRUF,
+            kanalAnruf(context),
             context.getString(R.string.kanal_anruf),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = context.getString(R.string.kanal_anruf_text)
             setShowBadge(true)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            /* DER KLINGELTON HÄNGT AM KANAL, nicht an der Meldung. Ohne
+               eigene Angabe nimmt Android den Benachrichtigungston –
+               ein kurzes „Pling" für einen Anruf. Ein Klingelton ist
+               etwas anderes: er läuft weiter, bis jemand abnimmt. */
+            val ton = klingelton(context)
+                ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+            setSound(
+                ton,
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
         }
 
         // Das laufende Gespräch soll NICHT klingeln und nicht vibrieren –
@@ -97,7 +157,7 @@ object Anrufmeldung {
         val annehmen = absicht(context, MainActivity.AKTION_ANNEHMEN)
         val ablehnen = absicht(context, MainActivity.AKTION_ABLEHNEN)
 
-        val bau = NotificationCompat.Builder(context, KANAL_ANRUF)
+        val bau = NotificationCompat.Builder(context, kanalAnruf(context))
             .setSmallIcon(R.drawable.ic_anrufe)
             .setContentTitle(anzeige)
             .setContentText(context.getString(R.string.eingehender_anruf))

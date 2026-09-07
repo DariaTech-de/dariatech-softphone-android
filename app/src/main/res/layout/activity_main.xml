@@ -287,6 +287,18 @@
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="13sp" />
 
+                    <!-- Was die ANLAGE von diesem Gerät sieht (GET /geraet).
+                         Am 07.09.2026 sagte die App „Verbunden" und das
+                         Portal „abgemeldet". Hier steht die zweite Hälfte
+                         der Wahrheit, damit niemand mehr raten muss. -->
+                    <TextView
+                        android:id="@+id/anlageSichtZeile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp" />
+
                     <!-- WORAN DER KUNDE IST (Punkt 11 aus Stufe 2 der
                          Verschluesselung, 06.09.2026). Verschluesselung,
                          die man nur behauptet, ist keine. Der Text
@@ -312,6 +324,59 @@
                         android:layout_marginTop="10dp"
                         android:text="@string/neu_anmelden"
                         style="?attr/materialButtonOutlinedStyle" />
+
+                    <!-- Warteschleifen: an- und abmelden über die ANLAGE,
+                         nicht über *45. Die Begründung der Anlage (etwa
+                         „kein Benutzer zugeordnet") steht darunter. -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:text="@string/warteschleife_section"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/warteschleifeSchalter"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/warteschleife_schalter"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/warteschleifeGrund"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+
+                    <!-- Klingelton: die Auswahl des Systems. Der Ton hängt
+                         am Kanal der Anrufmeldung (Anrufmeldung.kt). -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:text="@string/klingelton_section"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/klingeltonZeile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingVertical="8dp"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"

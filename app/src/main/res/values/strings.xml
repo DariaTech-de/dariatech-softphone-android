@@ -67,6 +67,19 @@
     <string name="zugangsdaten_section">Zugangsdaten</string>
     <string name="neu_anmelden">Neu anmelden</string>
     <string name="nebenstelle_zeile">Nebenstelle: %1$s</string>
+    <!-- Die ehrliche Anzeige (07.09.2026): „Verbunden“ nur, wenn die Anlage das Gerät auch sieht. -->
+    <string name="status_nicht_gesehen">Von der Anlage nicht gesehen</string>
+    <string name="status_nicht_erreichbar">Angemeldet, nicht erreichbar</string>
+    <string name="anlage_sicht_zeile">Anlage sieht dieses Gerät: %1$s</string>
+    <string name="anlage_sicht_unbekannt">noch nicht gefragt</string>
+    <string name="warteschleife_section">Warteschleifen</string>
+    <string name="warteschleife_schalter">In den Warteschleifen angemeldet</string>
+    <string name="warteschleife_unbekannt">Stand bei der Anlage noch unbekannt.</string>
+    <string name="warteschleife_ohne_ausweis">Erst nach der Anmeldung bei der Anlage schaltbar.</string>
+    <string name="klingelton_section">Klingelton</string>
+    <string name="klingelton_zeile">Klingelton: %1$s</string>
+    <string name="klingelton_system">Klingelton des Systems</string>
+    <string name="klingelton_waehlen">Klingelton für Anrufe</string>
     <string name="nebenstelle_leer">Nebenstelle: noch nicht eingetragen</string>
     <string name="save_connect">Speichern &amp; verbinden</string>
     <string name="tab_dialpad">Telefon</string>
