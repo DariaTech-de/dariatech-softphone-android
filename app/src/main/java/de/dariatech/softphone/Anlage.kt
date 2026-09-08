@@ -61,7 +61,25 @@ object Anlage {
      * DIESELBE ZEILE STEHT IN Anlage.swift der iOS-App. Wer hier
      * ändert, ändert dort mit.
      */
-    const val SERVER = "sip.dariatech.de"
+    /* UMGEZOGEN AM 08.09.2026 auf den neuen Hauptserver.
+     *
+     * DER VORFALL (Inhaber, 08.09.2026, mit Bildschirmfoto aus der
+     * iOS-App – die Android-App trug denselben Namen): „Die App hat noch
+     * keinen Ausweis von der Anlage." Kein eigenes Bild, keine Kontakte,
+     * kein Chat, während die Telefonie längst über pbx.taamas.de lief.
+     *
+     * DER GRUND: Die App holt ihren Ausweis über
+     * POST https://<server>:8443/token – und <server> war noch der ALTE
+     * Rechner. Nachgemessen am selben Abend im Namensdienst:
+     *
+     *     sip.dariatech.de → 178.254.6.5    (alt, Asterisk dort AUS)
+     *     pbx.taamas.de    → 31.70.137.58   (der neue Hauptserver)
+     *
+     * Der Inhaber hat den Namen am selben Tag festgelegt: „ich habe mich
+     * für pbx.taamas.de entschieden für client für SIP anmeldung."
+     * Altlasten vom alten Server werden ausdrücklich nicht übernommen.
+     */
+    const val SERVER = "pbx.taamas.de"
 
     /**
      * TLS zuerst – seit dem 06.09.2026.

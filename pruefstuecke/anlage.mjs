@@ -65,8 +65,27 @@ console.log("\n1) Es gibt eine Datei, in der die Anlage steht");
        DASSELBE STEHT IM iOS-REPO. Zwei Apps mit zwei Servern wären zwei
        Fehlerbilder für dieselbe Ursache. */
     const ohneKommentar = t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-    pruefe("und sie nennt die SIP-Adresse der Anlage", /"sip\.dariatech\.de"/.test(t),
+    /* UMGEZOGEN AM 08.09.2026 auf pbx.taamas.de – den neuen
+       Hauptserver. Nachgemessen im Namensdienst am selben Abend:
+
+         sip.dariatech.de → 178.254.6.5    (alter Server, Asterisk aus)
+         pbx.taamas.de    → 31.70.137.58   (der neue Hauptserver)
+
+       DER VORFALL steht in der iOS-App, betrifft aber beide gleich: In
+       den Einstellungen stand „Die App hat noch keinen Ausweis von der
+       Anlage" – kein Bild, keine Kontakte, kein Chat. Die App holt den
+       Ausweis über POST https://<server>:8443/token, und <server> war
+       noch der ALTE, längst abgeschaltete Rechner.
+
+       Der Inhaber hat den Namen am selben Tag festgelegt: „ich habe
+       mich für pbx.taamas.de entschieden für client für SIP anmeldung." */
+    pruefe("und sie nennt die SIP-Adresse der Anlage", /"pbx\.taamas\.de"/.test(t),
       (t.match(/const val SERVER = "([^"]*)"/) ?? [])[1] ?? "keine gefunden");
+    pruefe("und nicht mehr den alten Server",
+      !/"sip\.dariatech\.de"/.test(
+        t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
+      ),
+      "sip.dariatech.de zeigt auf 178.254.6.5 – dort ist Asterisk aus");
     pruefe("und NICHT den Namen hinter dem CDN",
       !/pbx\.dariatech\.de|portal\.dariatech\.de/.test(ohneKommentar),
       "Cloudflare führt nur HTTP/HTTPS weiter – SIP kommt dort nie an");
@@ -78,7 +97,7 @@ console.log("\n2) Die Serveradresse steht nur an dieser einen Stelle");
 {
   const woanders = dateien
     .filter((d) => d !== "Anlage.kt")
-    .filter((d) => /sip\.dariatech\.de/.test(lies(d)));
+    .filter((d) => /pbx\.taamas\.de|sip\.dariatech\.de/.test(lies(d)));
   pruefe("kein zweites Vorkommen im Kotlin-Quelltext",
     woanders.length === 0, woanders.join(", "));
 }
