@@ -67,17 +67,14 @@ pruefe("der Zustand kommt aus dem Gedächtnis, nicht aus g.gewechselt",
   /Schluesselgedaechtnis\.zustand\(/.test(gespraech) && !/\.gewechselt/.test(gespraech),
   (gespraech.match(/.*\.gewechselt.*/) || [""])[0].trim());
 
-console.log("\n2) Kein stiller Rückfall, wo TLS schon einmal ging");
-pruefe("es gibt ein Transportgedächtnis", /object Transportgedaechtnis/.test(anlage));
-pruefe("eine geglückte TLS-Anmeldung wird festgehalten",
-  /Transportgedaechtnis\.merke\(/.test(mgr));
-pruefe("der Rückfall fragt es",
-  /Transportgedaechtnis\.tlsGingSchon\(/.test(mgr));
-pruefe("und weigert sich dann, von selbst zurückzufallen",
-  /tlsBlockiert = true/.test(mgr));
-pruefe("der Mensch kann es trotzdem – sonst wählt niemand mehr 112",
-  /fun offenAnmelden\(/.test(mgr));
-pruefe("und die Oberfläche zeigt es", /tlsBlockiert/.test(haupt));
+/* ÜBERHOLT AM 09.09.2026, bewusst stehen gelassen: Befund 2 der
+   Durchsicht (der Rückfall fragt das Gedächtnis) ist gegenstandslos,
+   seit es keinen Rückfall mehr gibt – TLS ist Pflicht. Übrig bleibt
+   die Negation, siehe pflicht.mjs. */
+console.log("\n2) Kein Rückfall mehr – und damit nichts, was ein Netz erzwingen könnte");
+pruefe("kein Transportgedächtnis", !/object Transportgedaechtnis/.test(anlage));
+pruefe("kein Rückfall im Manager", !/faelleZurueck|beobachteTlsVersuch|Transportgedaechtnis/.test(mgr));
+pruefe("und kein „Trotzdem unverschlüsselt anmelden“", !/offenAnmelden/.test(mgr) && !/offenAnmelden/.test(haupt));
 
 console.log("\n3) Kein Ende-zu-Ende, das nicht geprüft ist");
 pruefe("die Texte versprechen kein Ende-zu-Ende mehr",

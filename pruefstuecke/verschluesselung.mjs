@@ -25,6 +25,12 @@
  * besteht, gar nicht mehr an – und ein nicht angemeldetes Telefon
  * wählt auch keine 112.
  *
+ * BERICHTIGT AM 09.09.2026: Der Rückfall auf UDP und der
+ * „Bestandsschutz" isMediaEncryptionMandatory = false sind weg – TLS
+ * und SRTP sind Pflicht (Auftrag des Inhabers; ausführlich in
+ * pflicht.mjs). Die Abschnitte 2 bis 4 sind auf die neue Regel
+ * gezogen, nicht gelöscht.
+ *
  * Aufruf:  node pruefstuecke/verschluesselung.mjs
  */
 import { readFileSync } from "node:fs";
@@ -57,9 +63,9 @@ pruefe(
   "kein core.setMediaEncryption(MediaEncryption.SRTP)"
 );
 pruefe(
-  "aber NICHT zwingend – sonst sperrt es Bestandskunden aus",
-  /isMediaEncryptionMandatory\s*=\s*false/.test(manager),
-  "isMediaEncryptionMandatory fehlt oder steht auf true"
+  "und zwingend – die Anlage verlangt SRTP strikt, ein offenes Angebot darf die App nicht annehmen",
+  /isMediaEncryptionMandatory\s*=\s*true/.test(manager),
+  "isMediaEncryptionMandatory fehlt oder steht auf false"
 );
 
 console.log("\n2) Die Signalisierung wird zuerst über TLS versucht");
@@ -69,26 +75,21 @@ pruefe(
   "TRANSPORT steht nicht auf TLS"
 );
 pruefe(
-  "und den Rückfall daneben",
-  /RUECKFALL_TRANSPORT/.test(anlage),
-  "kein Rückfall benannt"
+  "und keinen Rückfall mehr (Pflicht seit dem 09.09.2026)",
+  !/RUECKFALL_TRANSPORT/.test(anlage),
+  "ein Rückfall ist benannt"
 );
 
 console.log("\n3) Der Rückfall greift, statt den Kunden auszusperren");
 pruefe(
-  "der Manager kennt den Rückfall",
-  /fun faelleZurueck|rueckfall/i.test(manager),
-  "keine Rückfall-Funktion"
+  "der Manager kennt keinen Rückfall",
+  !/fun faelleZurueck/.test(manager),
+  "Rückfall-Funktion vorhanden"
 );
 pruefe(
-  "und wartet dafür eine begrenzte Zeit ab",
-  /postDelayed|Handler\(/.test(manager),
-  "keine Warteuhr"
-);
-pruefe(
-  "der Rückfall ist sichtbar, nicht still",
-  /signalisierungOffen/.test(manager),
-  "kein sichtbarer Zustand"
+  "und meldet ausschließlich über TLS an",
+  /melde\(username, password, domain, TransportType\.Tls\)/.test(manager),
+  "melde() bekommt keinen festen TLS-Transport"
 );
 
 console.log("\n4) Der Mensch sieht, woran er ist");
@@ -98,14 +99,14 @@ pruefe(
   "weder im Layout noch in MainActivity"
 );
 pruefe(
-  "und die Texte dafür stehen in strings.xml",
-  /name="verschluesselung_offen"/.test(texte) && /name="verschluesselung_zu"/.test(texte),
-  "die Texte fehlen"
+  "und der Text dafür steht in strings.xml – ohne einen Text für „offen“, den es nicht mehr gibt",
+  /name="verschluesselung_zu"/.test(texte) && !/name="verschluesselung_offen"/.test(texte),
+  "Text fehlt oder der Text für den offenen Fall steht noch da"
 );
 pruefe(
-  "der Text zum offenen Fall sagt, was das heißt",
-  /wer wen anruft/i.test(texte),
-  "der Satz erklärt die Folge nicht"
+  "der Text sagt, dass es Pflicht ist",
+  /name="verschluesselung_zu">[^<]*Pflicht/.test(texte),
+  "der Satz nennt die Pflicht nicht"
 );
 
 const fehler = ergebnisse.filter(([, ok]) => !ok);

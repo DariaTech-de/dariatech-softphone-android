@@ -1,8 +1,6 @@
 package de.dariatech.softphone
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.view.TextureView
 import org.linphone.core.Account
 import org.linphone.core.AudioDevice
@@ -43,45 +41,20 @@ object LinphoneManager {
         core = factory.createCore(null, null, context)
         core.isPushNotificationEnabled = false
 
-        // VIDEO IST VORHANDEN, ABER NICHT AUTOMATISCH.
+        // SRTP – ZWINGEND. Seit dem 09.09.2026.
         //
-        // Liblinphone kann Video vollständig – das ist der Grund, warum
-        // es hier überhaupt in Tagen und nicht in Monaten geht. Trotzdem
-        // steht es beim Start auf „vorhanden, aber nicht von selbst":
-        //
-        //  · isVideoCaptureEnabled/isVideoDisplayEnabled schalten die
-        //    FÄHIGKEIT ein. Ohne sie kann die App gar kein Bild, auch
-        //    wenn die Gegenstelle eins anbietet.
-        //  · isVideoActivationPolicy „automatically initiate/accept =
-        //    false" heißt: Kein Anruf startet von selbst mit Bild, und
-        //    keiner nimmt Bild von selbst an. Der Mensch drückt.
-        //
-        // Der Grund ist nicht Vorsicht um ihrer selbst willen: Ein
-        // Telefon, das bei jedem Anruf ungefragt die Kamera einschaltet,
-        // ist ein Datenschutzvorfall mit Ansage. Die Anlage gibt Video
-        // frei (Einstellungen → Video); DASS es läuft, entscheidet hier
-        // die Person am Gerät.
-        // DIE SPRACHE WIRD VERSCHLÜSSELT (SRTP) – seit dem 06.09.2026.
-        //
-        // ANLASS: Der Auftrag des Inhabers, Punkt 11 aus Stufe 2 des
-        // Masterplans. Ohne diese Zeile geht das Gespräch als offenes
-        // RTP durchs Netz, und im WLAN eines Hotels hört jeder mit, der
-        // danebensitzt.
-        //
-        // UND ES IST KEIN SCHMUCK MEHR, SONDERN PFLICHT: Die Anlage
-        // legt seit demselben Tag NEUE Nebenstellen mit
-        // `media_encryption=sdes` und `media_encryption_optimistic=no`
-        // an – also STRIKT. Eine App ohne SRTP bekäme dort überhaupt
-        // kein Gespräch zustande.
-        //
-        // `isMediaEncryptionMandatory = false` ist der Bestandsschutz:
-        // Nebenstellen, die es seit Jahren gibt, sprechen weiter offen.
-        // Auf `true` wäre die Härtung eine Aussperrung – und wer nicht
-        // telefonieren kann, ruft auch keine 112.
-        // `setMediaEncryption` gibt einen Status zurueck, deshalb kein
+        // Der Endpunkt jeder Nebenstelle in der Anlage steht auf
+        // `media_encryption=sdes` und `media_encryption_optimistic=no`,
+        // ohne Wahl. Ein offenes Gespräch kommt dort nicht zustande.
+        // `isMediaEncryptionMandatory = false` („Bestandsschutz für
+        // alte Nebenstellen") hätte die App ein offenes Angebot annehmen
+        // lassen, wenn es eines gäbe – genau die Lücke, die der Inhaber
+        // geschlossen haben will. Auf `true` bietet die App nur SRTP an
+        // und nimmt nur SRTP an.
+        // `setMediaEncryption` gibt einen Status zurück, deshalb kein
         // Zuweisungs-Schreibstil: Kotlin macht daraus keine Eigenschaft.
         core.setMediaEncryption(MediaEncryption.SRTP)
-        core.isMediaEncryptionMandatory = false
+        core.isMediaEncryptionMandatory = true
 
         core.isVideoCaptureEnabled = true
         core.isVideoDisplayEnabled = true
@@ -96,7 +69,6 @@ object LinphoneManager {
                 state: RegistrationState?,
                 message: String
             ) {
-                if (state == RegistrationState.Ok) anmeldungGeglueckt()
                 listener?.onRegistration(state, message)
             }
 
@@ -165,35 +137,10 @@ object LinphoneManager {
         }
     }
 
-    /**
-     * Die Signalisierung läuft UNVERSCHLÜSSELT – weil die Anlage kein
-     * SIP über TLS annimmt und die App zurückgefallen ist.
-     *
-     * WARUM DAS SICHTBAR SEIN MUSS: Ein Rückfall, den niemand sieht,
-     * ist schlimmer als gar kein Versuch. Der Kunde hielte die App für
-     * verschlüsselt, obwohl im Netz mitzulesen ist, wer wen anruft.
-     */
-    var signalisierungOffen = false
-        private set
-
-    /**
-     * Der verschlüsselte Weg kommt nicht zustande, obwohl er hier schon
-     * einmal ging.
-     *
-     * NICHT dasselbe wie [signalisierungOffen]: Dort ist die App offen
-     * angemeldet, hier ist sie GAR NICHT angemeldet – weil sie sich
-     * weigert, still zurückzufallen. Der Mensch entscheidet
-     * ([offenAnmelden]), die App versucht derweil weiter TLS.
-     */
-    var tlsBlockiert = false
-        private set
-
-    /** Was zuletzt angemeldet wurde – der Rückfall braucht es noch einmal. */
+    /** Was zuletzt angemeldet wurde – damit dieselbe Anmeldung nicht zweimal läuft (siehe [login]). */
     private var letzterBenutzer = ""
     private var letztesPasswort = ""
     private var letzteDomain = ""
-    private var versuchMitTls = false
-    private val uhr = Handler(Looper.getMainLooper())
 
     /**
      * Meldet das Konto an; vorhandene Konten werden ersetzt.
@@ -209,11 +156,9 @@ object LinphoneManager {
      * ohne etwas geändert zu haben, soll dabei nicht abgemeldet werden.
      */
     fun login(username: String, password: String, domain: String, transport: TransportType) {
-        val mitTls = transport == TransportType.Tls
         val unveraendert = username == letzterBenutzer &&
             password == letztesPasswort &&
-            domain == letzteDomain &&
-            mitTls == versuchMitTls
+            domain == letzteDomain
         if (unveraendert && (istRegistriert() || istImGange())) {
             android.util.Log.i("Anlage", "Anmeldung unverändert und steht – nichts zu tun.")
             return
@@ -221,87 +166,14 @@ object LinphoneManager {
         letzterBenutzer = username
         letztesPasswort = password
         letzteDomain = domain
-        versuchMitTls = transport == TransportType.Tls
-        if (versuchMitTls) signalisierungOffen = false
-        melde(username, password, domain, transport)
-        if (versuchMitTls) beobachteTlsVersuch()
-    }
-
-    /**
-     * Acht Sekunden auf eine Anmeldung warten, sonst zurückfallen.
-     *
-     * Gewartet wird eine feste, kurze Zeit statt auf einen Fehlercode:
-     * Ein TLS-Handschlag ins Leere endet je nach Netz mit einem
-     * Zeitablauf, einem Verbindungsabbruch oder gar nichts. Auf „keine
-     * Anmeldung nach acht Sekunden" ist Verlass, auf die Fehlermeldung
-     * nicht.
-     */
-    private fun beobachteTlsVersuch() {
-        uhr.postDelayed({
-            if (!versuchMitTls || istRegistriert()) return@postDelayed
-            /* NUR WO TLS NOCH NIE GING, FÄLLT SIE VON SELBST ZURÜCK.
-               Sonst wäre der Rückfall vom Netz erzwingbar: Wer Pakete
-               nach 5061 verwirft, bekommt die App nach acht Sekunden
-               auf offenes UDP – samt der SDES-Schlüssel im SDP. Wo TLS
-               schon einmal ging, entscheidet ab jetzt der Mensch, und
-               die App versucht es in der Zwischenzeit weiter. */
-            val ctx = appContext
-            if (ctx != null && Transportgedaechtnis.tlsGingSchon(ctx, letzteDomain)) {
-                tlsBlockiert = true
-                android.util.Log.w(
-                    "Anlage",
-                    "Der verschlüsselte Weg (TLS) kommt nicht zustande, obwohl er " +
-                        "bei dieser Anlage schon einmal ging. Es wird weiter versucht; " +
-                        "auf den offenen Weg schaltet nur der Mensch."
-                )
-                beobachteTlsVersuch()
-                return@postDelayed
-            }
-            faelleZurueck()
-        }, 8_000)
-    }
-
-    /**
-     * Der Mensch schaltet bewusst auf den offenen Weg.
-     *
-     * Angeboten wird das nur, wenn [tlsBlockiert] steht – also wenn die
-     * App sich weigert, es von selbst zu tun. Es bleibt angeboten, weil
-     * die Alternative „gar nicht angemeldet" heißt, und ein nicht
-     * angemeldetes Telefon wählt auch keine 112.
-     */
-    fun offenAnmelden() {
-        if (!tlsBlockiert) return
-        tlsBlockiert = false
-        faelleZurueck()
-    }
-
-    /**
-     * Die Anmeldung ist geglückt – vom Registrierungsereignis gemeldet.
-     *
-     * GEGLÜCKT ÜBER TLS HEISST: HIER GEHT TLS. Ab jetzt ist ein
-     * Fehlschlag verdächtig und kein Grund mehr, still auf den offenen
-     * Weg zurückzufallen.
-     */
-    fun anmeldungGeglueckt() {
-        if (!versuchMitTls) return
-        tlsBlockiert = false
-        appContext?.let { Transportgedaechtnis.merke(it, letzteDomain) }
-    }
-
-    private fun faelleZurueck() {
-        versuchMitTls = false
-        signalisierungOffen = true
-        android.util.Log.w(
-            "Anlage",
-            // KEINE BEHAUPTUNG ÜBER DIE ANLAGE: Der Code weiß nur, dass
-            // binnen acht Sekunden keine Anmeldung zustande kam – nicht,
-            // WARUM. „Diese Anlage nimmt kein TLS an" stand hier bis zum
-            // 06.09.2026 und war im Angriffsfall schlicht falsch.
-            "Über TLS kam keine Anmeldung zustande. Anmeldung über " +
-                "${Anlage.RUECKFALL_TRANSPORT} – die Signalisierung geht damit " +
-                "offen über das Netz."
-        )
-        melde(letzterBenutzer, letztesPasswort, letzteDomain, TransportType.Udp)
+        /* NUR TLS. Der Aufrufer reicht Anlage.TRANSPORT durch; ein
+           anderer Transport wird nicht angenommen, damit kein Weg – auch
+           kein alter – die App je wieder offen anmeldet. Seit dem
+           09.09.2026 nimmt die Anlage ohnehin nichts anderes an. */
+        if (transport != TransportType.Tls) {
+            android.util.Log.w("Anlage", "Anmeldung über $transport verlangt – es gibt nur TLS.")
+        }
+        melde(username, password, domain, TransportType.Tls)
     }
 
     private fun melde(username: String, password: String, domain: String, transport: TransportType) {
@@ -371,20 +243,18 @@ object LinphoneManager {
         val address = core.interpretUrl(number, true) ?: return
         val params = core.createCallParams(null) ?: return
         params.isVideoEnabled = mitVideo
-        /* ZRTP NUR NACH INNEN, und gesetzt wird es AM ANRUF.
+        /* SRTP FÜR JEDEN ANRUF – auch zum Kollegen.
 
-           Am Kern gesetzt gälte es auch nach draußen – und dort kann es
-           niemand: Der Anbieter spricht kein ZRTP, das Gespräch käme
-           entweder unverschlüsselt oder gar nicht zustande. Punkt 20
-           des Masterplans sagt dasselbe von der anderen Seite: nach
-           draußen und beim Notruf geht es über die Anlage.
-
-           Wirksam wird es erst, wenn die Anlage sich aus dem Sprachweg
-           zurückzieht (Schalter „Sicheres Direktgespräch"). Tut sie es
-           nicht, läuft ZRTP zwischen App und Anlage – dann gilt das
-           Sicherheitswort nur bis dorthin. */
-        params.mediaEncryption =
-            if (istKollege(number)) MediaEncryption.ZRTP else MediaEncryption.SRTP
+           Bis zum 09.09.2026 stand hier ZRTP für interne Gespräche
+           (Stufe 4 des Masterplans: Sicherheitswort, Ende-zu-Ende bei
+           direktem Medienweg). Seit jede Nebenstelle in der Anlage
+           strikt SDES verlangt, lehnt der Endpunkt ein ZRTP-Angebot
+           (RTP/AVP ohne a=crypto) mit 488 ab, BEVOR ein Kanal entsteht
+           – das war das Bild vom 09.09.2026: „0 calls processed",
+           während der Inhaber ständig anrief. Das Sicherheitswort
+           bleibt im Code, aber es entsteht keins mehr; der
+           Gesprächsbildschirm zeigt deshalb „bis zur Anlage". */
+        params.mediaEncryption = MediaEncryption.SRTP
         core.inviteAddressWithParams(address, params)
     }
 

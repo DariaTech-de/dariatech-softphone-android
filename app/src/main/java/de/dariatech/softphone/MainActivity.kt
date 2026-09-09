@@ -777,41 +777,18 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     }
 
     /**
-     * Zeigt an, was WIRKLICH gilt – nicht, was die App gerne hätte.
+     * Die Verschlüsselung ist Pflicht (09.09.2026) – die Zeile sagt,
+     * was gilt, und bietet nichts zum Umschalten an.
      *
-     * Fällt die App auf den offenen Transport zurück, weil die Anlage
-     * kein SIP über TLS annimmt, steht das hier. Ein Rückfall, den
-     * niemand sieht, ist schlimmer als gar kein Versuch.
+     * Bis dahin standen hier drei Zustände (verschlüsselt / offen
+     * zurückgefallen / TLS blockiert mit Knopf „Trotzdem
+     * unverschlüsselt anmelden"). Es gibt keinen Rückfall mehr, also
+     * auch keinen offenen Zustand; kommt TLS nicht zustande, zeigt die
+     * Kopfzeile „nicht angemeldet", und das ist die Wahrheit.
      */
     private fun zeigeVerschluesselung() {
-        /* DREI ZUSTÄNDE, NICHT ZWEI (Durchsicht 06.09.2026). Neu ist
-           der mittlere: Die App ist GAR NICHT angemeldet, weil sie sich
-           weigert, still auf den offenen Weg zurückzufallen – TLS ging
-           bei dieser Anlage schon einmal, ein Fehlschlag ist also
-           verdächtig. Das gehört an die auffälligste Stelle und nicht
-           in eine Zeile, die nur nachschlägt, wer ohnehin misstraut.
-           Der Knopf bleibt, weil die Alternative „gar nicht angemeldet"
-           heißt und ein nicht angemeldetes Telefon keine 112 wählt. */
-        if (LinphoneManager.tlsBlockiert) {
-            binding.verschluesselungZeile.setText(R.string.verschluesselung_blockiert)
-            binding.verschluesselungZeile.setOnClickListener {
-                android.app.AlertDialog.Builder(this)
-                    .setTitle(R.string.verschluesselung_blockiert_titel)
-                    .setMessage(R.string.verschluesselung_blockiert_text)
-                    .setPositiveButton(R.string.verschluesselung_trotzdem) { _, _ ->
-                        LinphoneManager.offenAnmelden()
-                        zeigeVerschluesselung()
-                    }
-                    .setNegativeButton(R.string.abbrechen, null)
-                    .show()
-            }
-            return
-        }
         binding.verschluesselungZeile.setOnClickListener(null)
-        binding.verschluesselungZeile.setText(
-            if (LinphoneManager.signalisierungOffen) R.string.verschluesselung_offen
-            else R.string.verschluesselung_zu
-        )
+        binding.verschluesselungZeile.setText(R.string.verschluesselung_zu)
     }
 
     private fun connect() {
@@ -965,11 +942,6 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     override fun onRegistration(state: RegistrationState?, message: String) {
         runOnUiThread {
-            // Der Rueckfall auf den offenen Transport meldet sich als
-            // neue Registrierung. Ohne diese Zeile stuende in den
-            // Einstellungen weiter „verschluesselt", waehrend die App
-            // laengst offen telefoniert – genau die Luege, gegen die
-            // die Anzeige gebaut ist.
             zeigeVerschluesselung()
             when (state) {
                 RegistrationState.Ok -> {

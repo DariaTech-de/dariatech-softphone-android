@@ -82,38 +82,30 @@ object Anlage {
     const val SERVER = "pbx.taamas.de"
 
     /**
-     * TLS zuerst – seit dem 06.09.2026.
+     * TLS – und nichts anderes. Seit dem 09.09.2026.
      *
-     * DER AUFTRAG (Inhaber): „Es muss alles verschlüsselt werden."
-     * Punkt 11 aus Stufe 2 des Masterplans. Ohne TLS geht die
-     * SIGNALISIERUNG offen durchs Netz: die Anmeldung, und bei jedem
-     * Anruf, wer wen anruft und wann. Im WLAN eines Hotels liest das
-     * jeder mit, der danebensitzt.
+     * DER AUFTRAG (Inhaber, nach einem Tag ohne Telefonie): „TLS muss
+     * für die gesamte Anlage und alle Kunden verpflichtend sein, es
+     * soll keine andere Wahl geben. Alles innerhalb der Anlage muss
+     * zwangsläufig verschlüsselt sein."
      *
-     * Bis hierher stand "UDP", mit der Begründung, ein
-     * Transportwechsel sei eine Verhaltensänderung für jeden Kunden im
-     * Feld und gehöre gemessen. Das gilt weiter – und genau deshalb
-     * steht daneben der RÜCKFALL.
+     * Bis dahin stand hier „TLS zuerst, nach acht Sekunden Rückfall auf
+     * UDP" – mit einem Transportgedächtnis und einem Knopf „Trotzdem
+     * unverschlüsselt anmelden". Die Anlage nimmt seit demselben Tag
+     * jede Nebenstelle NUR noch über TLS an (transport=transport-tls
+     * im Endpunkt). Ein Rückfall meldete sich damit ins Leere – die App
+     * zeigte „abgemeldet", wo „TLS blockiert" die Wahrheit gewesen
+     * wäre. Und er war vom Netz erzwingbar: Wer im selben WLAN Pakete
+     * nach 5061 verwirft, hätte die App auf offenes UDP bekommen, samt
+     * der SDES-Schlüssel im SDP.
+     *
+     * Kommt TLS nicht zustande, bleibt die App also unangemeldet und
+     * sagt es. Das ist die Entscheidung des Inhabers – lieber sichtbar
+     * nicht angemeldet als still offen.
      *
      * DIESELBE ZEILE STEHT IN Anlage.swift der iOS-App.
      */
     const val TRANSPORT = "TLS"
-
-    /**
-     * Der Weg, auf den zurückgefallen wird, wenn die Anlage kein TLS
-     * annimmt.
-     *
-     * WARUM ES IHN GEBEN MUSS: Ob die Anlage SIP über TLS annimmt,
-     * hängt an einem `[transport-tls]` in ihrer pjsip.conf, den ein
-     * Mensch einrichten muss (im Repository der Anlage:
-     * docs/NEUER-SERVER.md, Schritt 6b). Fehlt er, bekommt eine App,
-     * die auf TLS besteht, keine Anmeldung mehr – und ein nicht
-     * angemeldetes Telefon wählt auch keine 112.
-     *
-     * UDP und nicht TCP: Es ist der Weg, auf dem jedes Gerät dieser
-     * Kunden seit Jahren telefoniert.
-     */
-    const val RUECKFALL_TRANSPORT = "UDP"
 
     /**
      * Der Dienst der Anlage für alles, was NICHT Telefonie ist:
@@ -172,46 +164,3 @@ object Anlage {
     }
 }
 
-/**
- * Was die App über den Transport DIESER Anlage schon weiß.
- *
- * DER ANLASS (Sicherheitsdurchsicht, 06.09.2026). Der Rückfall von TLS
- * auf UDP hing an einer reinen Zeitschranke: acht Sekunden ohne
- * Registrierung, dann offen. Diese Bedingung stellt jeder her, der im
- * selben WLAN sitzt und Pakete nach 5061 verwirft – und dann liest er
- * nicht nur mit, WER wen anruft: Der Medienschutz ist SDES, der
- * Medienschlüssel steht also im `a=crypto:` des SDP. Über offenes UDP
- * holt er ihn sich und entschlüsselt das Gespräch.
- *
- * WARUM DER RÜCKFALL TROTZDEM BLEIBT: Eine Anlage ohne
- * `[transport-tls]` in ihrer pjsip.conf nimmt kein TLS an. Ohne
- * Rückfall käme dort gar keine Anmeldung zustande – und ein nicht
- * angemeldetes Telefon wählt auch keine 112. Eine Härtung, die einen
- * laufenden Kunden aussperrt, ist keine.
- *
- * DER AUSWEG ist dieses Gedächtnis: Wo TLS noch NIE ging, fällt die App
- * zurück wie bisher; niemand merkt eine Änderung. Wo es schon einmal
- * ging, ist ein Fehlschlag verdächtig – dort entscheidet der MENSCH.
- *
- * WARUM SharedPreferences UND NICHT DER VERSCHLÜSSELTE SPEICHER: Hier
- * steht kein Geheimnis, sondern eine Tatsache über das Netz. Wer diese
- * Datei schreiben kann, steht ohnehin schon auf dem entsperrten Gerät.
- * Der Angreifer, um den es geht, sitzt im WLAN und kommt an keins von
- * beidem.
- */
-object Transportgedaechtnis {
-    private const val ABLAGE = "transport"
-
-    private fun schluessel(domain: String) = "tls-ging-schon-" + domain.lowercase()
-
-    /** Hat sich die App bei dieser Anlage schon einmal über TLS angemeldet? */
-    fun tlsGingSchon(context: Context, domain: String): Boolean =
-        context.getSharedPreferences(ABLAGE, Context.MODE_PRIVATE)
-            .getBoolean(schluessel(domain), false)
-
-    /** Es hat geklappt – ab jetzt ist ein Fehlschlag verdächtig. */
-    fun merke(context: Context, domain: String) {
-        context.getSharedPreferences(ABLAGE, Context.MODE_PRIVATE)
-            .edit().putBoolean(schluessel(domain), true).apply()
-    }
-}

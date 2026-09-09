@@ -49,7 +49,12 @@ pruefe(
   /fun\s+istKollege/.test(manager),
   "die App unterscheidet nicht zwischen innen und außen"
 );
-pruefe("und für ein internes Gespräch wird ZRTP gewählt", /MediaEncryption\.ZRTP/.test(manager));
+/* ZURÜCKGESTELLT AM 09.09.2026: Die Anlage verlangt SRTP strikt; ein
+   ZRTP-Angebot (RTP/AVP ohne a=crypto) lehnt der Endpunkt mit 488 ab,
+   bevor ein Kanal entsteht. ZRTP wird deshalb nicht mehr gewählt. Das
+   Sicherheitswort und das ehrliche Kennzeichen bleiben im Code – für
+   den Tag, an dem die Anlage einen Direktweg ohne SDES anbietet. */
+pruefe("aber es wird kein ZRTP mehr gewählt – der strikte SDES-Endpunkt lehnt das ab", !/MediaEncryption\.ZRTP/.test(manager));
 pruefe(
   "gesetzt wird es AM ANRUF, nicht am Kern",
   /params\.mediaEncryption\s*=/.test(manager),
