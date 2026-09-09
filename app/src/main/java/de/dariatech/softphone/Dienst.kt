@@ -400,6 +400,33 @@ data class Kollege(
     val nummer: String,
     val durchwahl: String,
     val nebenstellen: List<String>,
+    /**
+     * DAS PROFIL DES MENSCHEN (09.09.2026).
+     *
+     * DER AUFTRAG des Inhabers: „alles was in Portal eingetragen wird
+     * pro User soll in der App im Profil angezeigt werden, im eigenen
+     * Profil als auch im Profil anderer Kollegen der Organisation."
+     * Und der Satz davor, der sagt WOFÜR: „um in Apps nach der
+     * mitarbeiter zu suchen und anzuchaten wie bei Whatsapp oder
+     * Teams."
+     *
+     * Bis dahin kannte die App vier Felder. Wer jemanden suchte,
+     * musste seinen NAMEN kennen – in einem Haus mit vierzig Leuten
+     * findet man so den Kollegen aus der Buchhaltung nicht, dessen
+     * Namen man vergessen hat.
+     *
+     * ALLE FÜNF HABEN EINE VORGABE. Eine ältere Anlage schickt sie
+     * gar nicht; die App muss trotzdem laufen. So steht es in
+     * CLIENT-API.md: unbekannte und fehlende Felder werden ignoriert,
+     * nie als Fehler behandelt.
+     */
+    val position: String = "",
+    val abteilung: String = "",
+    val email: String = "",
+    /** Erreichbarkeit, kein Stammdatum – er will gerade nicht gestört werden. */
+    val ausserDienst: Boolean = false,
+    /** Seine eigene Faxnummer, sofern er eine hat. */
+    val fax: String = "",
     /** Marke seines Bildes. Leer heißt: er hat keines. */
     val foto: String,
     /**
@@ -419,6 +446,16 @@ data class Kollege(
                 nummer = o.optString("nummer"),
                 durchwahl = o.optString("durchwahl"),
                 nebenstellen = (0 until (nst?.length() ?: 0)).map { nst!!.getString(it) },
+                /* optString UND optBoolean, nicht getString: Eine
+                   Anlage, die noch nicht aktualisiert ist, schickt
+                   diese Felder nicht – getString würfe, und die ganze
+                   Kollegenliste bliebe leer. Eine App im Feld lässt
+                   sich nicht gleichzeitig mit dem Server erneuern. */
+                position = o.optString("position"),
+                abteilung = o.optString("abteilung"),
+                email = o.optString("email"),
+                ausserDienst = o.optBoolean("ausserDienst", false),
+                fax = o.optString("fax"),
                 foto = o.optString("foto"),
                 geraete = o.optJSONArray("geraete").let { g ->
                     (0 until (g?.length() ?: 0)).map { Geraeteschluessel.aus(g!!.getJSONObject(it)) }

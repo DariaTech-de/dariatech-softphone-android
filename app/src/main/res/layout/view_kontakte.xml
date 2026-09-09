@@ -9,9 +9,44 @@
   Der leere Zustand sagt, was fehlt, statt eine leere Fläche zu zeigen –
   „nichts da" und „kaputt" sehen sonst gleich aus.
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- DAS SUCHFELD (09.09.2026). Der Auftrag des Inhabers nannte den
+         Zweck: „vorallem um in Apps nach der mitarbeiter zu suchen und
+         anzuchaten wie bei Whatsapp oder Teams." Gesucht wird über
+         Name, Position, Abteilung, Durchwahl, Rufnummer und E-Mail –
+         nicht nur über den Namen, denn genau den kennt man ja oft
+         nicht mehr. -->
+    <EditText
+        android:id="@+id/kontakteSuche"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/eingabe_feld"
+        android:hint="@string/kontakte_suchen"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:maxLines="1"
+        android:paddingStart="14dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="12dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textColorHint="?attr/colorOnSurfaceVariant"
+        android:textSize="15sp"
+        android:visibility="gone"
+        android:autofillHints="" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/kontakteListe"
@@ -55,4 +90,5 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
     </LinearLayout>
-</FrameLayout>
+    </FrameLayout>
+</LinearLayout>

@@ -210,9 +210,48 @@
                     android:orientation="vertical"
                     android:padding="18dp">
 
+                    <!-- MEIN PROFIL (09.09.2026). Auftrag des Inhabers:
+                         „soll im einegnen Profil als auch im Profil
+                         andere Koolegen der Organistation."
+
+                         Es steht GANZ OBEN in den Einstellungen, weil
+                         das Bild in der Kopfleiste hierher führt – wer
+                         auf sein eigenes Gesicht drückt, sucht sich
+                         selbst. Die Zeile zeigt gleich, was die Anlage
+                         über einen weiß; das Blatt zeigt alles. -->
+                    <LinearLayout
+                        android:id="@+id/meinProfilZeile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:orientation="vertical"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="16dp">
+
+                        <TextView
+                            android:id="@+id/meinProfilName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/profil_ich"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/meinProfilRolle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
                         android:text="@string/account_section"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="18sp"

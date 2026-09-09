@@ -179,6 +179,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         Verzeichnis.beiAenderung = {
             zeigeKontakte()
             zeigeProfil()
+            zeigeMeinProfil()
             zeigeChat()
         }
         Verzeichnis.lade(this)
@@ -320,13 +321,51 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.viewKontakte.kontakteLeerTitel.setText(R.string.leer_kontakte_titel)
         binding.viewKontakte.kontakteLeerText.setText(R.string.leer_kontakte_text)
         binding.viewKontakte.kontakteListe.layoutManager = LinearLayoutManager(this)
-        kontakteAdapter = KontakteAdapter { ziel ->
-            /* EIN DRUCK WÄHLT und wechselt in den Anrufbereich – wer
-               hier tippt, will telefonieren. */
-            LinphoneManager.call(ziel)
-        }
+        kontakteAdapter = KontakteAdapter(
+            beimAnruf = { ziel ->
+                /* EIN DRUCK AUF DEN HÖRER WÄHLT – wer ihn tippt, will
+                   telefonieren. */
+                LinphoneManager.call(ziel)
+            },
+            beimProfil = { kollege ->
+                /* EIN DRUCK AUF DIE ZEILE ÖFFNET DAS PROFIL (09.09.2026).
+                   Vorbild WhatsApp und Teams, so vom Inhaber genannt.
+                   Nur bei Kollegen – ein Eintrag aus dem Adressbuch des
+                   Telefons hat kein Profil zu zeigen. */
+                Profil.zeige(
+                    this,
+                    kollege,
+                    beimAnruf = { ziel -> LinphoneManager.call(ziel) },
+                    beiNachricht = { k ->
+                        startActivity(
+                            Intent(this, GespraechsActivity::class.java)
+                                .putExtra(GespraechsActivity.ZIEL, k.id)
+                                .putExtra(GespraechsActivity.NAME, k.name)
+                        )
+                    }
+                )
+            }
+        )
         binding.viewKontakte.kontakteListe.adapter = kontakteAdapter
+        /* DIE SUCHE ZIEHT DIE LISTE BEI JEDEM ZEICHEN NACH. Ein
+           Suchfeld, das erst auf die Lupe wartet, benutzt niemand. */
+        binding.viewKontakte.kontakteSuche.addTextChangedListener(
+            object : android.text.TextWatcher {
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    kontaktSuche = s?.toString() ?: ""
+                    zeigeKontakte()
+                }
+                override fun beforeTextChanged(c: CharSequence?, a: Int, b: Int, d: Int) {}
+                override fun onTextChanged(c: CharSequence?, a: Int, b: Int, d: Int) {}
+            }
+        )
         zeigeKontakte()
+        /* MEIN PROFIL – erreichbar über das eigene Bild in der
+           Kopfleiste, das in die Einstellungen führt. Der Name steht
+           schon in der Zeile, damit man nicht erst öffnen muss, um zu
+           sehen, ob die App weiß, wer man ist. */
+        binding.meinProfilZeile.setOnClickListener { Profil.zeigeMich(this) }
+        zeigeMeinProfil()
         binding.viewChat.chatListe.layoutManager = LinearLayoutManager(this)
         Postfach.beiAenderung = { zeigeChat() }
     }
@@ -507,13 +546,69 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      * SICHTBAR IST IMMER GENAU EINES. „Nichts da" und „kaputt" sehen
      * sonst gleich aus, und der Bereich springt beim ersten Laden.
      */
+    /**
+     * Die Zeile „Mein Profil" in den Einstellungen nachziehen.
+     *
+     * Gehört dieser Apparat keinem Menschen – ein Konferenzraum, ein
+     * Türsprecher –, steht dort der Grund und nicht eine leere Zeile.
+     * „Nichts da" und „kaputt" sehen sonst gleich aus.
+     */
+    private fun zeigeMeinProfil() {
+        val ich = Verzeichnis.ich(this)
+        if (ich == null) {
+            binding.meinProfilName.setText(R.string.profil_ich)
+            binding.meinProfilRolle.setText(R.string.profil_kein_ich)
+            return
+        }
+        binding.meinProfilName.text = ich.name.ifEmpty { getString(R.string.profil_ich) }
+        val rolle = listOf(ich.position, ich.abteilung).filter { it.isNotEmpty() }
+            .joinToString(" · ")
+        binding.meinProfilRolle.text = rolle
+    }
+
+    /** Was im Suchfeld über der Kontaktliste steht. */
+    private var kontaktSuche: String = ""
+
     private fun zeigeKontakte() {
-        val leute = Verzeichnis.kollegen
-        val buch = Verzeichnis.kontakte
+        val alleLeute = Verzeichnis.kollegen
+        val allesBuch = Verzeichnis.kontakte
+        /* GESUCHT WIRD ÜBER POSITION UND ABTEILUNG, nicht nur über den
+           Namen – genau dafür gibt es die beiden Felder (Profil.passt).
+           Im Adressbuch des Telefons gibt es sie nicht; dort bleibt es
+           bei Name, Firma und Nummer. */
+        val leute = alleLeute.filter { Profil.passt(it, kontaktSuche) }
+        val buch =
+            if (kontaktSuche.isBlank()) allesBuch
+            else allesBuch.filter { e ->
+                val q = kontaktSuche.trim().lowercase()
+                e.name.lowercase().contains(q) ||
+                    e.firma.lowercase().contains(q) ||
+                    e.nummern.any { it.nummer.contains(q) }
+            }
         kontakteAdapter?.setze(leute, buch)
+
+        /* DAS SUCHFELD STEHT NUR DA, WENN ES ETWAS ZU SUCHEN GIBT.
+           Über einer leeren Liste ist es ein Versprechen, das nichts
+           hält. Sobald aber gesucht WIRD, bleibt es stehen – sonst
+           verschwände es unter den Fingern, sobald die Suche nichts
+           findet, und man käme nicht mehr zurück. */
+        val hatDaten = alleLeute.isNotEmpty() || allesBuch.isNotEmpty()
+        binding.viewKontakte.kontakteSuche.visibility =
+            if (hatDaten) View.VISIBLE else View.GONE
+
         val leer = leute.isEmpty() && buch.isEmpty()
         binding.viewKontakte.kontakteListe.visibility = if (leer) View.GONE else View.VISIBLE
         binding.viewKontakte.kontakteLeer.visibility = if (leer) View.VISIBLE else View.GONE
+        /* „NICHTS EINGETRAGEN" UND „NICHTS GEFUNDEN" SIND ZWEI DINGE.
+           Derselbe Satz für beides schickt den Bediener in die falsche
+           Richtung: Der eine legt Kontakte an, der andere tippt anders. */
+        if (leer && hatDaten) {
+            binding.viewKontakte.kontakteLeerTitel.setText(R.string.kontakte_nichts_gefunden)
+            binding.viewKontakte.kontakteLeerText.text = ""
+        } else if (leer) {
+            binding.viewKontakte.kontakteLeerTitel.setText(R.string.leer_kontakte_titel)
+            binding.viewKontakte.kontakteLeerText.setText(R.string.leer_kontakte_text)
+        }
     }
 
     private var verlauf: VerlaufAdapter? = null

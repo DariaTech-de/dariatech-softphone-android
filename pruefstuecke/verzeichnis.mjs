@@ -129,11 +129,23 @@ console.log("\n5) Der Bereich „Kontakte“ ist keine leere Seite mehr");
   pruefe("mit zwei Abschnitten", /"Kollegen"/.test(adapter) && /"Adressbuch"/.test(adapter));
   /* SEINE DURCHWAHL, WENN ER EINE HAT – dann klingeln ALLE seine
      Geräte. Wer das umdreht, erwischt den Menschen nur, wenn er
-     zufällig am richtigen Apparat sitzt. */
+     zufällig am richtigen Apparat sitzt.
+
+     DIE REGEL IST AM 09.09.2026 UMGEZOGEN, nicht verschwunden: Sie
+     steht jetzt in `Profil.ruf()`, weil das Profilblatt denselben
+     Anruf auslöst wie die Liste. Zwei Fassungen derselben Regel laufen
+     auseinander, und dann ruft die eine Stelle ein anderes Gerät als
+     die andere. Geprüft wird deshalb dort – und dass die Liste sie
+     wirklich benutzt. */
+  const profil = lies("Profil.kt");
   pruefe("ein Kollege wird über seine Durchwahl gerufen",
-    /k\.durchwahl\.isNotEmpty\(\) -> k\.durchwahl/.test(adapter));
+    /k\.durchwahl\.isNotEmpty\(\) -> k\.durchwahl/.test(profil),
+    "steht jetzt in Profil.ruf()");
   pruefe("und sonst über seine erste Nebenstelle",
-    /k\.nebenstellen\.first\(\)/.test(adapter));
+    /k\.nebenstellen\.first\(\)/.test(profil));
+  pruefe("und die Kontaktliste benutzt genau diese Regel",
+    /ziel = Profil\.ruf\(k\)/.test(adapter),
+    "sonst gibt es sie zweimal");
   pruefe("ein Druck wählt", /beimAnruf\(z\.ziel\)/.test(adapter));
   pruefe("Bild oder Initialen – immer genau eines",
     /kuerzel\.visibility = View\.INVISIBLE/.test(adapter)

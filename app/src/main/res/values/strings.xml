@@ -145,4 +145,30 @@
     <string name="chat_senden">Senden</string>
     <string name="chat_noch_nichts">Noch keine Nachrichten</string>
     <string name="chat_fehler_senden">Die Nachricht ließ sich nicht senden. Prüfen Sie die Verbindung.</string>
+    <!-- DAS PROFIL EINES MENSCHEN (09.09.2026).
+         Auftrag des Inhabers: „alles was in Portal eingetragen wird pro
+         User soll in der App im Profil angezeigt werden, im eigenen
+         Profil als auch im Profil anderer Kollegen der Organisation."
+         Die Beschriftungen stehen hier und nicht im Kotlin – ein
+         deutscher Satz im Quelltext steht beim nächsten Mal an zwei
+         Stellen verschieden. -->
+    <string name="profil_titel">Profil</string>
+    <string name="profil_ich">Mein Profil</string>
+    <string name="profil_position">Position</string>
+    <string name="profil_abteilung">Abteilung</string>
+    <string name="profil_email">E-Mail</string>
+    <string name="profil_durchwahl">Durchwahl</string>
+    <string name="profil_nummer">Rufnummer</string>
+    <string name="profil_fax">Fax</string>
+    <string name="profil_ausser_dienst">Außer Dienst</string>
+    <string name="profil_ausser_dienst_hinweis">Möchte gerade nicht gestört werden.</string>
+    <string name="profil_anrufen">Anrufen</string>
+    <string name="profil_nachricht">Nachricht</string>
+    <!-- Ein Profil ohne gepflegte Felder ist kein Fehler – aber es soll
+         sagen, warum es leer ist, statt eine leere Fläche zu zeigen. -->
+    <string name="profil_leer">Zu diesem Menschen ist im Portal noch nichts weiter eingetragen.</string>
+    <string name="profil_ich_leer">Zu Ihnen ist im Portal noch nichts weiter eingetragen. Position und Abteilung trägt der Verwalter Ihres Anschlusses ein.</string>
+    <string name="profil_kein_ich">Dieser Apparat gehört keinem Menschen der Anlage – deshalb gibt es kein eigenes Profil.</string>
+    <string name="kontakte_suchen">Suchen – Name, Position, Abteilung</string>
+    <string name="kontakte_nichts_gefunden">Zu dieser Suche ist niemand eingetragen.</string>
 </resources>

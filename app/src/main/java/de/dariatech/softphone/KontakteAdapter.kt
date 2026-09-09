@@ -17,11 +17,22 @@ import androidx.recyclerview.widget.RecyclerView
  * häufigen Fall im seltenen zu vergraben. Dieselbe Aufteilung wie auf
  * iOS (`Kontakte.swift`).
  *
- * EIN DRUCK WÄHLT. Wer hier jemanden antippt, will telefonieren – nicht
- * erst eine Karte öffnen, in der dann noch einmal ein Hörer steht.
+ * EIN DRUCK WÄHLT – IM ADRESSBUCH. Wer dort jemanden antippt, will
+ * telefonieren, nicht erst eine Karte öffnen, in der noch einmal ein
+ * Hörer steht.
+ *
+ * BEI KOLLEGEN IST ES SEIT DEM 09.09.2026 ANDERS, und das ist eine
+ * bewusste Abweichung: Ein Druck öffnet SEIN PROFIL, der Hörer rechts
+ * wählt. Der Auftrag des Inhabers nannte WhatsApp und Teams als
+ * Vorbild, und dort ist es genau so. Ein Kollege hat jetzt etwas zu
+ * zeigen – Position, Abteilung, Durchwahl, Fax, E-Mail –, ein Eintrag
+ * aus dem Adressbuch des Telefons nicht. Der Hörer steht in beiden
+ * Fällen an derselben Stelle: EIN Druck telefoniert weiterhin.
  */
 class KontakteAdapter(
-    private val beimAnruf: (String) -> Unit
+    private val beimAnruf: (String) -> Unit,
+    /** Wird bei einem KOLLEGEN gerufen – das Adressbuch hat kein Profil. */
+    private val beimProfil: ((Kollege) -> Unit)? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     /** Eine Zeile – entweder eine Überschrift oder ein Eintrag. */
@@ -31,7 +42,9 @@ class KontakteAdapter(
             val name: String,
             val unten: String,
             val benutzerId: String?,
-            val ziel: String
+            val ziel: String,
+            /** Gesetzt nur bei Kollegen – nur die haben ein Profil. */
+            val kollege: Kollege? = null
         ) : Zeile()
     }
 
@@ -53,13 +66,10 @@ class KontakteAdapter(
                 neu.add(
                     Zeile.Eintrag(
                         name = k.name,
-                        unten = if (k.durchwahl.isNotEmpty()) "Durchwahl ${k.durchwahl}" else k.nummer,
+                        unten = untenZeile(k),
                         benutzerId = k.id,
-                        ziel = when {
-                            k.durchwahl.isNotEmpty() -> k.durchwahl
-                            k.nebenstellen.isNotEmpty() -> k.nebenstellen.first()
-                            else -> k.nummer
-                        }
+                        ziel = Profil.ruf(k),
+                        kollege = k
                     )
                 )
             }
@@ -82,6 +92,32 @@ class KontakteAdapter(
         }
         zeilen = neu
         notifyDataSetChanged()
+    }
+
+    /**
+     * Was unter dem Namen eines Kollegen steht.
+     *
+     * SEIT DEM 09.09.2026 POSITION UND ABTEILUNG, wenn sie gepflegt
+     * sind. Vorher stand dort „Durchwahl 111" – eine Zahl, die man in
+     * der Zeile nicht braucht: Wer telefonieren will, drückt den Hörer,
+     * und wer die Nummer sehen will, öffnet das Profil. Was man an
+     * dieser Stelle wirklich braucht, ist die Antwort auf „wer ist
+     * das?" (Auftrag des Inhabers: „um in Apps nach der mitarbeiter zu
+     * suchen").
+     *
+     * Ist nichts gepflegt, bleibt es bei der Durchwahl – eine leere
+     * zweite Zeile sähe aus, als fehlte etwas.
+     *
+     * AUSSER DIENST steht VORAN. Wer das übersieht, ruft dreimal an.
+     */
+    private fun untenZeile(k: Kollege): String {
+        val rolle = listOf(k.position, k.abteilung).filter { it.isNotEmpty() }.joinToString(" · ")
+        val kern = when {
+            rolle.isNotEmpty() -> rolle
+            k.durchwahl.isNotEmpty() -> "Durchwahl ${k.durchwahl}"
+            else -> k.nummer
+        }
+        return if (k.ausserDienst) "Außer Dienst · $kern" else kern
     }
 
     private fun artName(art: String) = when (art) {
@@ -132,7 +168,15 @@ class KontakteAdapter(
                     h.kuerzel.text = Verzeichnis.kuerzel(z.name)
                 }
                 val waehlen = View.OnClickListener { beimAnruf(z.ziel) }
-                h.itemView.setOnClickListener(waehlen)
+                /* Kollege → Profil, Adressbuch → wählen. Die Begründung
+                   steht oben am Kopf der Datei. Der Hörer wählt in
+                   beiden Fällen. */
+                val k = z.kollege
+                if (k != null && beimProfil != null) {
+                    h.itemView.setOnClickListener { beimProfil.invoke(k) }
+                } else {
+                    h.itemView.setOnClickListener(waehlen)
+                }
                 h.anrufen.setOnClickListener(waehlen)
             }
         }
