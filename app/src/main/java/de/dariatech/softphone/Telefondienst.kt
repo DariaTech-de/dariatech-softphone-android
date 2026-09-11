@@ -1,6 +1,5 @@
 package de.dariatech.softphone
 
-import org.linphone.core.RegistrationState
 
 /**
  * Der Zustand des Telefondienstes – in Worten, die jemand versteht.
@@ -54,9 +53,9 @@ object Telefondienst {
         Dienstzustand.UNVOLLSTAENDIG -> "Noch nicht eingerichtet"
     }
 
-    fun zustandAus(state: RegistrationState?): Dienstzustand = when (state) {
-        RegistrationState.Ok -> Dienstzustand.VERBUNDEN
-        RegistrationState.Progress -> Dienstzustand.LAEUFT
+    fun zustandAus(state: Anmeldezustand): Dienstzustand = when (state) {
+        Anmeldezustand.ANGEMELDET -> Dienstzustand.VERBUNDEN
+        Anmeldezustand.LAEUFT -> Dienstzustand.LAEUFT
         else -> Dienstzustand.GETRENNT
     }
 

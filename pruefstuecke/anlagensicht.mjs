@@ -50,7 +50,10 @@ console.log("1) login() erkennt eine Wiederholung");
 
 console.log("\n2) Zurück im Vordergrund");
 pruefe("der Manager frischt die Anmeldung auf", /fun vordergrund\(\)[\s\S]{0,300}refreshRegisters\(\)/.test(manager));
-pruefe("MainActivity ruft das in onResume", /override fun onResume\(\)[\s\S]{0,400}LinphoneManager\.vordergrund\(\)/.test(main));
+/* Seit dem 11.09.2026 redet die Oberfläche mit dem Kern nur über die
+   Naht `Telefonkern.aktiv` (pruefstuecke/kern-naht.mjs) – der Aufruf
+   bleibt derselbe, der Weg ist ein anderer. */
+pruefe("MainActivity ruft das in onResume", /override fun onResume\(\)[\s\S]{0,400}Telefonkern\.aktiv\.vordergrund\(\)/.test(main));
 
 console.log("\n3) Die ehrliche Anzeige");
 pruefe("Dienst.geraet() holt GET /geraet", /fun geraet\([\s\S]{0,300}"\/geraet"/.test(dienst));

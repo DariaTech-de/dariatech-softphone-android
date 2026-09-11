@@ -118,12 +118,12 @@ object Autoanruf {
                     // DAS AUTO HAT ANGENOMMEN. Lenkradtaste,
                     // Sperrbildschirm und Android Auto kommen alle hier
                     // an – der Kern erfährt es erst dadurch.
-                    onAnswer = { _ -> LinphoneManager.annehmenVomSystem() },
-                    onDisconnect = { _ -> LinphoneManager.hangup() },
-                    onSetActive = { LinphoneManager.setzeGehalten(false) },
+                    onAnswer = { _ -> Telefonkern.aktiv.annehmenVomSystem() },
+                    onDisconnect = { _ -> Telefonkern.aktiv.hangup() },
+                    onSetActive = { Telefonkern.aktiv.setzeGehalten(false) },
                     // Das Auto hält das Gespräch, weil ein GSM-Anruf
                     // hereinkommt.
-                    onSetInactive = { LinphoneManager.setzeGehalten(true) }
+                    onSetInactive = { Telefonkern.aktiv.setzeGehalten(true) }
                 ) {
                     steuerung = this
                 }

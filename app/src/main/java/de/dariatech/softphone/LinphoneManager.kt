@@ -17,25 +17,45 @@ import org.linphone.core.TransportType
  * Lautsprecher, Halten, DTMF und die eigene Anrufliste. Die UI hängt sich
  * über [listener] an.
  */
-object LinphoneManager {
-
-    interface Listener {
-        fun onRegistration(state: RegistrationState?, message: String)
-        fun onCallState(call: Call, state: Call.State?, message: String)
-    }
+object LinphoneManager : Telefonkern {
 
     lateinit var core: Core
         private set
 
-    var listener: Listener? = null
+    override var zuhoerer: Telefonkern.Zuhoerer? = null
     private var appContext: Context? = null
+
+    /* DIE ÜBERSETZUNG in die eigenen Typen der Naht (Telefonkern.kt).
+       Hier – und nur hier – kennt die App noch die Zustände der
+       Bibliothek. */
+    private fun uebersetze(state: RegistrationState?): Anmeldezustand = when (state) {
+        RegistrationState.Ok -> Anmeldezustand.ANGEMELDET
+        RegistrationState.Progress -> Anmeldezustand.LAEUFT
+        RegistrationState.Failed -> Anmeldezustand.FEHLGESCHLAGEN
+        else -> Anmeldezustand.ABGEMELDET
+    }
+
+    private fun uebersetze(state: Call.State?): Anrufzustand = when (state) {
+        Call.State.IncomingReceived, Call.State.IncomingEarlyMedia -> Anrufzustand.KLINGELT_HEREIN
+        Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> Anrufzustand.RUFT_HINAUS
+        Call.State.Connected, Call.State.StreamsRunning -> Anrufzustand.VERBUNDEN
+        Call.State.UpdatedByRemote -> Anrufzustand.GEAENDERT
+        Call.State.End, Call.State.Released, Call.State.Error -> Anrufzustand.BEENDET
+        else -> Anrufzustand.SONST
+    }
+
+    private fun gegenstelle(call: Call): Gegenstelle = Gegenstelle(
+        nummer = call.remoteAddress.username ?: "",
+        anzeigename = call.remoteAddress.displayName,
+        adresse = call.remoteAddress.asStringUriOnly()
+    )
 
     // Verfolgung des aktuellen Anrufs für die Anrufliste
     private var trackNumber = ""
     private var trackIncoming = false
     private var trackConnected = false
 
-    fun init(context: Context) {
+    override fun init(context: Context) {
         appContext = context.applicationContext
         val factory = Factory.instance()
         core = factory.createCore(null, null, context)
@@ -69,7 +89,7 @@ object LinphoneManager {
                 state: RegistrationState?,
                 message: String
             ) {
-                listener?.onRegistration(state, message)
+                zuhoerer?.beiAnmeldung(uebersetze(state), message)
             }
 
             override fun onCallStateChanged(
@@ -79,7 +99,7 @@ object LinphoneManager {
                 message: String
             ) {
                 trackCall(call, state)
-                listener?.onCallState(call, state, message)
+                zuhoerer?.beiAnruf(gegenstelle(call), uebersetze(state), message)
             }
         })
         core.start()
@@ -155,7 +175,7 @@ object LinphoneManager {
      * onCreate und der Speichern-Knopf `connect()`; wer nur speichert,
      * ohne etwas geändert zu haben, soll dabei nicht abgemeldet werden.
      */
-    fun login(username: String, password: String, domain: String, transport: TransportType) {
+    override fun login(username: String, password: String, domain: String) {
         val unveraendert = username == letzterBenutzer &&
             password == letztesPasswort &&
             domain == letzteDomain
@@ -166,13 +186,8 @@ object LinphoneManager {
         letzterBenutzer = username
         letztesPasswort = password
         letzteDomain = domain
-        /* NUR TLS. Der Aufrufer reicht Anlage.TRANSPORT durch; ein
-           anderer Transport wird nicht angenommen, damit kein Weg – auch
-           kein alter – die App je wieder offen anmeldet. Seit dem
+        /* NUR TLS – der einzige Weg, den die Naht kennt; seit dem
            09.09.2026 nimmt die Anlage ohnehin nichts anderes an. */
-        if (transport != TransportType.Tls) {
-            android.util.Log.w("Anlage", "Anmeldung über $transport verlangt – es gibt nur TLS.")
-        }
         melde(username, password, domain, TransportType.Tls)
     }
 
@@ -205,7 +220,7 @@ object LinphoneManager {
      * anstößt, ist keine Bequemlichkeit, sondern der kürzeste Weg aus
      * einem stillen Telefon.
      */
-    fun neuAnmelden() {
+    override fun neuAnmelden() {
         core.refreshRegisters()
     }
 
@@ -221,7 +236,7 @@ object LinphoneManager {
      * REGISTER und schließt genau diese Lücke. Kein clearAccounts: Das
      * würde erst abmelden (siehe [login]).
      */
-    fun vordergrund() {
+    override fun vordergrund() {
         if (letzterBenutzer.isEmpty()) return
         core.refreshRegisters()
     }
@@ -231,7 +246,7 @@ object LinphoneManager {
         core.defaultAccount?.state == org.linphone.core.RegistrationState.Progress
 
     /** Ob gerade ein Konto angemeldet ist – für die Einstellungen. */
-    fun istRegistriert(): Boolean =
+    override fun istRegistriert(): Boolean =
         core.defaultAccount?.state == org.linphone.core.RegistrationState.Ok
 
     /**
@@ -239,7 +254,7 @@ object LinphoneManager {
      * akustisch, wie bisher. Video lässt sich im Gespräch jederzeit
      * dazuschalten (siehe [videoUmschalten]).
      */
-    fun call(number: String, mitVideo: Boolean = false) {
+    override fun call(number: String, mitVideo: Boolean) {
         val address = core.interpretUrl(number, true) ?: return
         val params = core.createCallParams(null) ?: return
         params.isVideoEnabled = mitVideo
@@ -269,7 +284,7 @@ object LinphoneManager {
      * unter fünf Stellen ist intern") wäre geraten; Häuser mit
      * fünfstelligen Durchwahlen gibt es.
      */
-    fun istKollege(nummer: String): Boolean {
+    override fun istKollege(nummer: String): Boolean {
         val z = nummer.filter { it.isDigit() }
         if (z.isEmpty()) return false
         return Verzeichnis.kollegen.any { k -> k.nebenstellen.contains(z) || k.durchwahl == z }
@@ -287,7 +302,7 @@ object LinphoneManager {
      * `null` heißt NICHT „unverschlüsselt", sondern „verschlüsselt bis
      * zur Anlage" (SRTP, Stufe 2).
      */
-    fun sicherheitswort(): String? {
+    override fun sicherheitswort(): String? {
         val wort = core.currentCall?.authenticationToken ?: return null
         return wort.ifEmpty { null }
     }
@@ -300,13 +315,13 @@ object LinphoneManager {
      * SRTP sein, und dann geht die Sprache offen durchs Netz, auch wenn
      * die eigene Seite alles richtig macht.
      */
-    fun gespraechVerschluesselt(): Boolean {
+    override fun gespraechVerschluesselt(): Boolean {
         val art = core.currentCall?.currentParams?.mediaEncryption ?: return false
         return art != MediaEncryption.None
     }
 
     /** Hat der Mensch das Wort schon mit der Gegenseite verglichen? */
-    fun sicherheitswortBestaetigt(): Boolean =
+    override fun sicherheitswortBestaetigt(): Boolean =
         core.currentCall?.authenticationTokenVerified == true
 
     /**
@@ -318,7 +333,7 @@ object LinphoneManager {
      * Ändert sich der Schlüssel doch, meldet es sich von selbst – und
      * genau das ist der Fall, den man sehen will.
      */
-    fun bestaetigeSicherheitswort() {
+    override fun bestaetigeSicherheitswort() {
         core.currentCall?.authenticationTokenVerified = true
     }
 
@@ -327,7 +342,7 @@ object LinphoneManager {
      * angenommen: Wer angerufen wird, soll nicht ungefragt gesendet
      * werden. Das Bild kommt mit einem Druck auf „Video" dazu.
      */
-    fun answer() {
+    override fun answer() {
         val call = core.currentCall ?: return
         val params = core.createCallParams(call)
         if (params != null) {
@@ -339,17 +354,17 @@ object LinphoneManager {
     }
 
     /** Bietet die Gegenstelle im laufenden Gespräch Bild an? */
-    fun gegenstelleMitVideo(): Boolean =
+    override fun gegenstelleMitVideo(): Boolean =
         core.currentCall?.remoteParams?.isVideoEnabled == true
 
     /** Läuft gerade Bild? */
-    fun videoLaeuft(): Boolean = core.currentCall?.currentParams?.isVideoEnabled == true
+    override fun videoLaeuft(): Boolean = core.currentCall?.currentParams?.isVideoEnabled == true
 
     /**
      * Bild im laufenden Gespräch dazuschalten oder abschalten.
      * Liefert den neuen Zustand.
      */
-    fun videoUmschalten(): Boolean {
+    override fun videoUmschalten(): Boolean {
         val call = core.currentCall ?: return false
         val an = !(call.currentParams.isVideoEnabled)
         val params = core.createCallParams(call) ?: return false
@@ -359,7 +374,7 @@ object LinphoneManager {
     }
 
     /** Zwischen Front- und Rückkamera wechseln. */
-    fun kameraWechseln() {
+    override fun kameraWechseln() {
         val liste = core.videoDevicesList
         if (liste.size < 2) return
         val jetzt = core.videoDevice
@@ -376,7 +391,7 @@ object LinphoneManager {
      * auf eine zerstörte Activity ist sonst ein Absturz beim nächsten
      * Anruf.
      */
-    fun videoFlaechen(fremd: TextureView?, eigen: TextureView?) {
+    override fun videoFlaechen(fremd: TextureView?, eigen: TextureView?) {
         core.nativeVideoWindowId = fremd
         core.nativePreviewWindowId = eigen
     }
@@ -390,12 +405,12 @@ object LinphoneManager {
      * System weiß es schon, sonst hätte es nicht gefragt – eine
      * Rückmeldung ergäbe eine Schleife.
      */
-    fun annehmenVomSystem() {
+    override fun annehmenVomSystem() {
         answer()
     }
 
     /** Halten/Fortsetzen auf Geheiss des Systems (Auto, Bluetooth). */
-    fun setzeGehalten(gehalten: Boolean) {
+    override fun setzeGehalten(gehalten: Boolean) {
         val call = core.currentCall ?: core.calls.firstOrNull() ?: return
         if (gehalten) {
             if (call.state != Call.State.Paused) call.pause()
@@ -404,19 +419,19 @@ object LinphoneManager {
         }
     }
 
-    fun hangup() {
+    override fun hangup() {
         if (core.callsNb > 0) {
             (core.currentCall ?: core.calls.firstOrNull())?.terminate()
         }
     }
 
-    fun toggleMute(): Boolean {
+    override fun toggleMute(): Boolean {
         core.isMicEnabled = !core.isMicEnabled
         return !core.isMicEnabled
     }
 
     /** Anruf halten/fortsetzen; liefert true = wird gehalten. */
-    fun toggleHold(): Boolean {
+    override fun toggleHold(): Boolean {
         val call = core.currentCall ?: core.calls.firstOrNull() ?: return false
         return if (call.state == Call.State.Paused || call.state == Call.State.Pausing) {
             call.resume()
@@ -428,15 +443,15 @@ object LinphoneManager {
     }
 
     /** DTMF-Ton im laufenden Gespräch senden (IVR-Menüs). */
-    fun sendDtmf(digit: Char) {
+    override fun sendDtmf(digit: Char) {
         core.currentCall?.sendDtmf(digit)
     }
 
     /** Laufzeit des aktiven Anrufs in Sekunden. */
-    fun currentCallDuration(): Int = core.currentCall?.duration ?: 0
+    override fun currentCallDuration(): Int = core.currentCall?.duration ?: 0
 
     /** Wechselt zwischen Hörmuschel und Lautsprecher; liefert true = Lautsprecher. */
-    fun toggleSpeaker(): Boolean {
+    override fun toggleSpeaker(): Boolean {
         val call = core.currentCall ?: return false
         val current = call.outputAudioDevice
         val wantSpeaker = current?.type != AudioDevice.Type.Speaker

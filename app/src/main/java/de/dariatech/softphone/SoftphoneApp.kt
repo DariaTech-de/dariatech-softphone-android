@@ -5,7 +5,7 @@ import android.app.Application
 class SoftphoneApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        LinphoneManager.init(this)
+        Telefonkern.aktiv.init(this)
         /* DIE ANMELDUNG BEIM SYSTEM GEHÖRT AN DEN START, nicht an den
            ersten Anruf. Google verlangt die Telecom-Anbindung
            ausdrücklich „zu jeder Zeit, nicht nur wenn Android Auto

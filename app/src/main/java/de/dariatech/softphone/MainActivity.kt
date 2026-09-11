@@ -20,16 +20,13 @@ import de.dariatech.softphone.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import org.linphone.core.Call
-import org.linphone.core.RegistrationState
-import org.linphone.core.TransportType
 
 /**
  * Hauptbildschirm: Wähltastatur, Anrufliste und SIP-Konto (mit Anbieter-
  * Vorlagen wie in der Desktop-App) plus Vollbild-Anrufansicht mit
  * Stumm/Lautsprecher/Halten/DTMF.
  */
-class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
+class MainActivity : AppCompatActivity(), Telefonkern.Zuhoerer {
 
     private lateinit var binding: ActivityMainBinding
     private val handler = Handler(Looper.getMainLooper())
@@ -157,7 +154,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
         // Liblinphone zeichnet selbst auf diese beiden Flächen. Ohne sie
         // bliebe das Bild aus, obwohl der Strom läuft.
-        LinphoneManager.videoFlaechen(binding.videoFremd, binding.videoEigen)
+        Telefonkern.aktiv.videoFlaechen(binding.videoFremd, binding.videoEigen)
 
         setupKeypad()
         setupNavigation()
@@ -165,7 +162,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         setupCallControls()
         setupLeereBereiche()
 
-        LinphoneManager.listener = this
+        Telefonkern.aktiv.zuhoerer = this
         showCallUi(inCall = false, ringing = false)
         zeigeProfil()
         /* DAS VERZEICHNIS KOMMT NACH DER TELEFONIE, nicht davor. Wer
@@ -219,8 +216,8 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     private fun behandleAbsicht(intent: Intent?) {
         when (intent?.action) {
-            AKTION_ANNEHMEN -> LinphoneManager.answer()
-            AKTION_ABLEHNEN, AKTION_AUFLEGEN -> LinphoneManager.hangup()
+            AKTION_ANNEHMEN -> Telefonkern.aktiv.answer()
+            AKTION_ABLEHNEN, AKTION_AUFLEGEN -> Telefonkern.aktiv.hangup()
             else -> Unit
         }
     }
@@ -236,7 +233,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      */
     override fun onResume() {
         super.onResume()
-        LinphoneManager.vordergrund()
+        Telefonkern.aktiv.vordergrund()
         handler.removeCallbacks(anlagensichtLauf)
         handler.post(anlagensichtLauf)
     }
@@ -252,7 +249,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         // Die Flächen gehören zu DIESER Activity. Bleibt der Verweis im
         // Core stehen, zeichnet Liblinphone beim nächsten Anruf auf eine
         // zerstörte View – und das ist ein Absturz, kein leeres Bild.
-        LinphoneManager.videoFlaechen(null, null)
+        Telefonkern.aktiv.videoFlaechen(null, null)
         super.onDestroy()
     }
 
@@ -325,7 +322,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             beimAnruf = { ziel ->
                 /* EIN DRUCK AUF DEN HÖRER WÄHLT – wer ihn tippt, will
                    telefonieren. */
-                LinphoneManager.call(ziel)
+                Telefonkern.aktiv.call(ziel)
             },
             beimProfil = { kollege ->
                 /* EIN DRUCK AUF DIE ZEILE ÖFFNET DAS PROFIL (09.09.2026).
@@ -335,7 +332,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 Profil.zeige(
                     this,
                     kollege,
-                    beimAnruf = { ziel -> LinphoneManager.call(ziel) },
+                    beimAnruf = { ziel -> Telefonkern.aktiv.call(ziel) },
                     beiNachricht = { k ->
                         startActivity(
                             Intent(this, GespraechsActivity::class.java)
@@ -467,7 +464,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         }
         binding.callButton.setOnClickListener {
             val number = binding.number.text.toString().trim()
-            if (number.isNotEmpty()) LinphoneManager.call(number)
+            if (number.isNotEmpty()) Telefonkern.aktiv.call(number)
         }
     }
 
@@ -648,7 +645,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 // die Nummer ins Wählfeld, und man musste ein zweites Mal
                 // drücken – in einer App, die man im Gehen bedient, ein
                 // Schritt zu viel.
-                beimAnrufen = { LinphoneManager.call(it.number) },
+                beimAnrufen = { Telefonkern.aktiv.call(it.number) },
                 // Die Zeile selbst führt weiterhin ins Wählfeld: Wer die
                 // Nummer erst ansehen oder ergänzen will, kann das.
                 beimTippen = {
@@ -681,7 +678,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             // Kein erneutes Eintippen des Passworts: Nach einem
             // Netzwechsel (WLAN auf Mobilfunk) steht die Registrierung
             // manchmal still, bis sie jemand anstößt.
-            LinphoneManager.neuAnmelden()
+            Telefonkern.aktiv.neuAnmelden()
             zeigeDienst(Dienstzustand.LAEUFT)
         }
         zeigeAnlagensicht()
@@ -794,16 +791,10 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
     private fun connect() {
         // Server und Transport kommen aus Anlage.kt, nicht aus den
         // Einstellungen. Diese App gehört EINER Anlage.
-        val transport = when (Anlage.TRANSPORT) {
-            "TCP" -> TransportType.Tcp
-            "TLS" -> TransportType.Tls
-            else -> TransportType.Udp
-        }
-        LinphoneManager.login(
+        Telefonkern.aktiv.login(
             prefs().getString("username", "") ?: "",
             Zugangsspeicher.passwort(this),
-            Anlage.SERVER,
-            transport
+            Anlage.SERVER
         )
         binding.status.text = getString(R.string.connecting)
     }
@@ -812,22 +803,22 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
 
     private fun setupCallControls() {
         buildKeypad(binding.dtmfPad, large = false, textColor = R.color.gespraech_text) { digit ->
-            LinphoneManager.sendDtmf(digit)
+            Telefonkern.aktiv.sendDtmf(digit)
         }
-        binding.hangupButton.setOnClickListener { LinphoneManager.hangup() }
-        binding.answerButton.setOnClickListener { LinphoneManager.answer() }
-        binding.declineButton.setOnClickListener { LinphoneManager.hangup() }
+        binding.hangupButton.setOnClickListener { Telefonkern.aktiv.hangup() }
+        binding.answerButton.setOnClickListener { Telefonkern.aktiv.answer() }
+        binding.declineButton.setOnClickListener { Telefonkern.aktiv.hangup() }
         binding.muteButton.setOnClickListener {
-            val muted = LinphoneManager.toggleMute()
+            val muted = Telefonkern.aktiv.toggleMute()
             binding.muteButton.text = getString(if (muted) R.string.unmute else R.string.mute)
         }
         binding.speakerButton.setOnClickListener {
-            val speaker = LinphoneManager.toggleSpeaker()
+            val speaker = Telefonkern.aktiv.toggleSpeaker()
             binding.speakerButton.text =
                 getString(if (speaker) R.string.earpiece else R.string.speaker)
         }
         binding.holdButton.setOnClickListener {
-            val held = LinphoneManager.toggleHold()
+            val held = Telefonkern.aktiv.toggleHold()
             binding.holdButton.text = getString(if (held) R.string.resume else R.string.hold)
             binding.callState.text = getString(if (held) R.string.on_hold else R.string.in_call)
         }
@@ -836,8 +827,8 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
             binding.dtmfPad.visibility = if (dtmfVisible) View.VISIBLE else View.GONE
         }
         binding.videoButton.setOnClickListener {
-            if (LinphoneManager.videoLaeuft()) {
-                LinphoneManager.videoUmschalten()
+            if (Telefonkern.aktiv.videoLaeuft()) {
+                Telefonkern.aktiv.videoUmschalten()
                 zeigeVideo()
                 return@setOnClickListener
             }
@@ -850,11 +841,11 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                 kameraFreigabe.launch(Manifest.permission.CAMERA)
             }
         }
-        binding.kameraButton.setOnClickListener { LinphoneManager.kameraWechseln() }
+        binding.kameraButton.setOnClickListener { Telefonkern.aktiv.kameraWechseln() }
     }
 
     private fun videoEinschalten() {
-        LinphoneManager.videoUmschalten()
+        Telefonkern.aktiv.videoUmschalten()
         zeigeVideo()
     }
 
@@ -868,7 +859,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      * abschalten.
      */
     private fun zeigeVideo() {
-        val an = LinphoneManager.videoLaeuft()
+        val an = Telefonkern.aktiv.videoLaeuft()
         binding.videoBereich.visibility = if (an) View.VISIBLE else View.GONE
         binding.kameraButton.visibility = if (an) View.VISIBLE else View.GONE
         binding.videoButton.text =
@@ -879,7 +870,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         stopDurationTimer()
         val tick = object : Runnable {
             override fun run() {
-                val s = LinphoneManager.currentCallDuration()
+                val s = Telefonkern.aktiv.currentCallDuration()
                 binding.callDuration.text = "%d:%02d".format(s / 60, s % 60)
                 /* MIT DER UHR, nicht einmal beim Verbinden: Das
                    Sicherheitswort steht erst fest, wenn ZRTP durch ist
@@ -917,15 +908,15 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      * bis zur Anlage". Der Unterschied gehört auf den Bildschirm.
      */
     private fun zeigeGespraechsKrypto() {
-        val wort = LinphoneManager.sicherheitswort()
+        val wort = Telefonkern.aktiv.sicherheitswort()
         if (wort != null) {
-            val bestaetigt = LinphoneManager.sicherheitswortBestaetigt()
+            val bestaetigt = Telefonkern.aktiv.sicherheitswortBestaetigt()
             binding.gespraechKrypto.text = getString(
                 if (bestaetigt) R.string.gespraech_e2e_ok else R.string.gespraech_e2e, wort
             )
             binding.gespraechKrypto.setOnClickListener {
-                if (!LinphoneManager.sicherheitswortBestaetigt()) {
-                    LinphoneManager.bestaetigeSicherheitswort()
+                if (!Telefonkern.aktiv.sicherheitswortBestaetigt()) {
+                    Telefonkern.aktiv.bestaetigeSicherheitswort()
                     zeigeGespraechsKrypto()
                 }
             }
@@ -933,25 +924,25 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         }
         binding.gespraechKrypto.setOnClickListener(null)
         binding.gespraechKrypto.setText(
-            if (LinphoneManager.gespraechVerschluesselt()) R.string.gespraech_bis_anlage
+            if (Telefonkern.aktiv.gespraechVerschluesselt()) R.string.gespraech_bis_anlage
             else R.string.gespraech_offen
         )
     }
 
     // ---------- Ereignisse aus dem SIP-Stack ----------
 
-    override fun onRegistration(state: RegistrationState?, message: String) {
+    override fun beiAnmeldung(state: Anmeldezustand, message: String) {
         runOnUiThread {
             zeigeVerschluesselung()
             when (state) {
-                RegistrationState.Ok -> {
+                Anmeldezustand.ANGEMELDET -> {
                     binding.status.text = getString(R.string.connected)
                     binding.statusDot.setBackgroundResource(R.drawable.dot_green)
                     // …es sei denn, die Anlage widerspricht (siehe zeigeKopfzeile).
                     zeigeKopfzeile()
                 }
-                RegistrationState.Progress -> binding.status.text = getString(R.string.connecting)
-                RegistrationState.Failed -> {
+                Anmeldezustand.LAEUFT -> binding.status.text = getString(R.string.connecting)
+                Anmeldezustand.FEHLGESCHLAGEN -> {
                     binding.status.text = getString(R.string.reg_failed, message)
                     binding.statusDot.setBackgroundResource(R.drawable.dot_red)
                 }
@@ -982,7 +973,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         val echt = zustand ?: when {
             nebenstelle.isBlank() || Zugangsspeicher.passwort(this).isEmpty() ->
                 Dienstzustand.UNVOLLSTAENDIG
-            LinphoneManager.istRegistriert() -> Dienstzustand.VERBUNDEN
+            Telefonkern.aktiv.istRegistriert() -> Dienstzustand.VERBUNDEN
             else -> Dienstzustand.GETRENNT
         }
 
@@ -1044,7 +1035,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
      * Bestätigung ist kein Widerspruch.
      */
     private fun zeigeKopfzeile() {
-        if (!LinphoneManager.istRegistriert()) return
+        if (!Telefonkern.aktiv.istRegistriert()) return
         val sicht = anlagensicht
         when {
             sicht?.angemeldet == false -> {
@@ -1091,7 +1082,7 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
         binding.klingeltonZeile.text = getString(R.string.klingelton_zeile, name)
     }
 
-    override fun onCallState(call: Call, state: Call.State?, message: String) {
+    override fun beiAnruf(call: Gegenstelle, state: Anrufzustand, message: String) {
         runOnUiThread {
             /* WER IST DA? – aus dem VERZEICHNIS, nicht nur aus dem
                SIP-Kopf. `displayName` setzt die Gegenstelle, und bei
@@ -1103,16 +1094,15 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                Gesucht wird im GERÄT (Verzeichnis.wer): Beim Klingeln
                ist keine Zeit für eine Anfrage, und ohne Netz gäbe es
                gar keine Antwort. Dieselbe Regel wie auf iOS. */
-            val nummer = call.remoteAddress.username ?: ""
+            val nummer = call.nummer
             val treffer = Verzeichnis.wer(nummer)
             val who = treffer?.first
-                ?: call.remoteAddress.displayName
-                ?: call.remoteAddress.username
-                ?: call.remoteAddress.asStringUriOnly()
+                ?: call.anzeigename
+                ?: call.nummer.ifEmpty { call.adresse }
             gegenueberId = treffer?.second
             zeigeGesicht()
             when (state) {
-                Call.State.IncomingReceived, Call.State.IncomingEarlyMedia -> {
+                Anrufzustand.KLINGELT_HEREIN -> {
                     binding.callerInfo.text = who
                     binding.callState.text = getString(R.string.incoming_call)
                     showCallUi(inCall = false, ringing = true)
@@ -1121,14 +1111,14 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                     // aber auf dem Sperrbildschirm steht nichts.
                     Anrufmeldung.eingehend(this, who)
                 }
-                Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> {
+                Anrufzustand.RUFT_HINAUS -> {
                     binding.callerInfo.text = who
                     binding.callState.text = getString(R.string.outgoing_call)
                     showCallUi(inCall = true, ringing = false)
                 }
-                Call.State.Connected, Call.State.StreamsRunning -> {
+                Anrufzustand.VERBUNDEN -> {
                     binding.callState.text =
-                        if (LinphoneManager.gegenstelleMitVideo() && !LinphoneManager.videoLaeuft())
+                        if (Telefonkern.aktiv.gegenstelleMitVideo() && !Telefonkern.aktiv.videoLaeuft())
                             getString(R.string.video_incoming)
                         else getString(R.string.in_call)
                     showCallUi(inCall = true, ringing = false)
@@ -1139,8 +1129,8 @@ class MainActivity : AppCompatActivity(), LinphoneManager.Listener {
                     // sie nur beim eigenen Drücken zu setzen.
                     zeigeVideo()
                 }
-                Call.State.UpdatedByRemote -> zeigeVideo()
-                Call.State.End, Call.State.Released, Call.State.Error -> {
+                Anrufzustand.GEAENDERT -> zeigeVideo()
+                Anrufzustand.BEENDET -> {
                     Anrufmeldung.weg(this)
                     showCallUi(inCall = false, ringing = false)
                     stopDurationTimer()
